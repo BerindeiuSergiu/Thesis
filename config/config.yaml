@@ -1,0 +1,80 @@
+# Core pipeline configuration
+pipeline:
+  video_processing:
+    frame_extraction_fps: 30
+    max_frames: 1000
+    image_format: "jpg"
+    resize_factor: 1.0
+  
+  depth_estimation:
+    model_name: "midas"  # options: midas, dpt_large, dpt_hybrid
+    input_size: [384, 384]
+    batch_size: 4
+  
+  reconstruction:
+    method: "colmap"  # options: colmap, nerf, midas_to_pointcloud
+    colmap:
+      feature_type: "sift"
+      matcher_type: "exhaustive"
+      dense_reconstruction: true
+    point_cloud:
+      voxel_size: 0.01
+      remove_outliers: true
+  
+  segmentation:
+    model_name: "mask_rcnn"  # options: mask_rcnn, sam, detr3d
+    confidence_threshold: 0.7
+    nms_threshold: 0.5
+    classes: ["wall", "floor", "ceiling", "door", "window", "furniture"]
+
+# Machine Learning Models
+models:
+  depth_estimation:
+    midas:
+      model_path: "data/models/midas_v21_small.pt"
+      device: "cuda"
+    dpt:
+      model_path: "data/models/dpt_large.pt"
+      device: "cuda"
+  
+  segmentation:
+    mask_rcnn:
+      model_path: "data/models/mask_rcnn_R_50_FPN_3x.pkl"
+      device: "cuda"
+    sam:
+      model_path: "data/models/sam_vit_h_4b8939.pth"
+      device: "cuda"
+
+# Data paths
+data:
+  raw_videos: "data/raw/videos/"
+  processed_frames: "data/processed/frames/"
+  point_clouds: "data/processed/point_clouds/"
+  meshes: "data/processed/meshes/"
+  segmentation_masks: "data/processed/masks/"
+  reconstructed_scenes: "data/processed/scenes/"
+
+# Experiment settings
+experiments:
+  output_dir: "experiments/"
+  logging_level: "INFO"
+  save_intermediate_results: true
+  metrics_tracking: true
+  
+# Big Data Processing
+distributed:
+  spark:
+    master: "local[*]"
+    executor_memory: "4g"
+    driver_memory: "2g"
+  ray:
+    num_cpus: 8
+    num_gpus: 1
+
+# Visualization
+visualization:
+  web_port: 8080
+  scene_editor:
+    enable_physics: true
+    grid_size: 0.1
+    camera_controls: true
