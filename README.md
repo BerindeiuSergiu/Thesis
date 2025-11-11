@@ -1,15 +1,15 @@
 # Smart 3D Room Reconstruction and Interior Simulation System
 
-## 🏗️ Project Overview
+## Project Overview
 An application that takes a video of a room (captured with a smartphone, drone, or handheld camera) and automatically:
 1. Reconstructs a 3D model (mesh/point cloud) of the room
 2. Identifies walls, floors, and furniture using ML-based segmentation
 3. Allows architects or designers to add, move, or visualize new objects/furniture inside that 3D model
 4. Optionally exports the result to Unity, Unreal, or Blender for further rendering or VR walkthroughs
 
-**Pipeline:** `📹 Video → 🎞️ Frames → 🧱 3D Mesh → 🪑 Editable Scene`
+**Pipeline:** `Video → Frames → 3D Mesh → Editable Scene`
 
-## 🎯 Thesis Focus
+## Thesis Focus
 - **3D Room Reconstruction** from monocular video using deep learning
 - **Automated Interior Scene Modeling** and object placement using machine learning
 - **Scalable Deep Learning Pipeline** for indoor 3D reconstruction and design simulation
@@ -22,7 +22,7 @@ An application that takes a video of a room (captured with a smartphone, drone, 
 - **Scene Editor**: Three.js, Unity3D, Blender API integration
 - **Big Data Processing**: Apache Spark, Ray for distributed processing
 
-## 🛠️ Tech Stack
+## Tech Stack
 - **ML Framework**: PyTorch
 - **Computer Vision**: OpenCV, Open3D
 - **3D Processing**: COLMAP, MiDaS, NeRF
@@ -31,7 +31,7 @@ An application that takes a video of a room (captured with a smartphone, drone, 
 - **Visualization**: Three.js, Unity3D
 - **Storage**: PostgreSQL, S3/HDFS
 
-## 📁 Project Structure
+## Project Structure
 ```
 ├── src/                    # Source code
 │   ├── core/              # Core pipeline modules
@@ -59,13 +59,13 @@ An application that takes a video of a room (captured with a smartphone, drone, 
 3. **Performance Scalability**: Process multiple videos on Spark cluster
 4. **User Interactivity**: Evaluate usability with architects/designers
 
-## 🎯 Use Cases
-- 🏠 **Architecture Visualization**: Auto-generate editable 3D blueprints
-- 🎮 **Game Development**: Generate realistic indoor environments
-- 🛋️ **Interior Design**: Preview furniture and layout changes
-- 🕶️ **AR/VR Integration**: Enable immersive walk-throughs
+## Use Cases
+- **Architecture Visualization**: Auto-generate editable 3D blueprints
+- **Game Development**: Generate realistic indoor environments
+- **Interior Design**: Preview furniture and layout changes
+- **AR/VR Integration**: Enable immersive walk-throughs
 
-## 🚀 Getting Started
+## Getting Started
 1. Clone this repository
 2. Install dependencies: `pip install -r requirements.txt`
 3. Set up data directories and download pretrained models
