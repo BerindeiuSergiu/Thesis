@@ -98,7 +98,7 @@ echo Step 11: Testing installation...
 python -c "import sys; import importlib; packages_to_test = ['numpy', 'pandas', 'matplotlib', 'seaborn', 'plotly', 'cv2', 'PIL', 'torch', 'torchvision', 'sklearn', 'imageio', 'moviepy.editor', 'open3d', 'tqdm', 'yaml', 'pathlib', 'jupyter']; failed_packages = []; [print(f'[PASS] {package}') if (importlib.import_module(package.split('.')[0]) if '.' in package else importlib.import_module(package)) or True else (print(f'[FAIL] {package}'), failed_packages.append(package)) for package in packages_to_test]; print(f'\nWARNING: {len(failed_packages)} packages failed to import: {failed_packages}' if failed_packages else '\nSUCCESS: All core packages installed successfully!')"
 
 echo.
-echo 📋 Installation Summary
+echo  Installation Summary
 echo ======================
 echo [INSTALLED] Core ML packages (PyTorch, NumPy, OpenCV)
 echo [INSTALLED] Data science packages (Pandas, Matplotlib, Scikit-learn)
