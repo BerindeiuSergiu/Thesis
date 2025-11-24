@@ -27,6 +27,7 @@ pipeline:
     nms_threshold: 0.5
     classes: ["wall", "floor", "ceiling", "door", "window", "furniture"]
 
+
 # Machine Learning Models
 models:
   depth_estimation:
