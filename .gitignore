@@ -1,0 +1,128 @@
+# Python cache / build products
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
+
+# Virtual environments / local env files
+.venv/
+venv/
+env/
+ENV/
+.env
+.env.*
+.pip_tmp/
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.ipynb_checkpoints/
+
+# IDE / OS files
+.idea/
+*.code-workspace
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# Documentation stays local
+/thesis_docs/
+/agent/
+**/docs/
+*.md
+*.docx
+*.pdf
+*.ipynb
+*.svg
+*.txt
+!requirements.txt
+!**/requirements.txt
+!**/requirements-*.txt
+/ImaginePipeline.png
+/PIPELINE_EXPLICATIE_SRC.txt
+/RECONSTRUCTION_IMPROVEMENTS_2026_04_22.md
+/TODO_GAUSSIAN_OPTIMIZATION.md
+/script.txt
+
+# Shell launchers stay local
+*.sh
+*.ksh
+
+# Input videos and local datasets
+/data/raw/*
+!/data/raw/.gitkeep
+/data/processed/
+/data/models/
+/experiments/**/data/raw/
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.m4v
+
+# Application runtime state
+/src/data/*
+!/src/data/.gitkeep
+/src/outputs/*
+!/src/outputs/.gitkeep
+
+# Generated experiment outputs
+/experiments/**/outputs/
+/experiments/**/results/
+/experiments/**/tmp_results/
+/experiments/**/*_data/
+/experiments/**/pipeline_output/
+/experiments/**/visualization_output/
+/experiments/raw_inference_output/
+/experiments/gpt
+/experiments/vast_training/runs/
+/experiments/vast_training/runs.zip
+/experiments/vast_training/my_manifest.txt
+/experiments/vast_training/archive/
+**/.checkpoints/
+
+# Model weights, archives, and generated geometry
+*.ckpt
+*.pt
+*.pth
+*.safetensors
+*.onnx
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.npy
+*.npz
+*.ply
+*.obj
+*.csv
+*.log
+
+# Fast3R checkout metadata and demo media
+/fast3r/.git/
+/fast3r/assets/
+/fast3r/demo_examples/
+
+# Standalone DUSt3R checkout and legacy experiment route
+/dust3r/
+/experiments/**/pipelines/dust3r/
+/experiments/**/main_dust3r.py
+/experiments/**/run_dust3r.sh
+
+# Common local run directories
+logs/
+checkpoints/
+tmp/
+temp/

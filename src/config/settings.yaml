@@ -1,0 +1,136 @@
+app:
+  name: "Fast3R Desktop Wrapper"
+  default_pipeline: "default"
+  scenes_index_path: "data/scenes_index.json"
+  outputs_root: "outputs"
+  log_file: "data/app.log"
+
+pipeline:
+  stub_mode: false
+  default_pipeline: "default"
+  fast3r:
+    auto_preset_enabled: true
+    active_preset: "high_quality_detail"
+    presets:
+      high_quality_detail:
+        target_frames: 180
+        selection_mode: "geometry_aware"
+        visual_shortlist_target: 220
+        probe_max_frames: 180
+        scan_stride: 10
+        min_frame_gap: 10
+        prefilter_enabled: true
+        dtype: "bfloat16"
+        min_confidence_threshold: 1.05
+        confidence_keep_ratio: 0.85
+        view_conf_p50_min: 1.2
+        view_conf_p90_min: 1.45
+        weak_texture_retention: true
+        weak_texture_percentile: 35.0
+        weak_texture_min_conf_thr: 0.55
+        weak_texture_keep_ratio: 0.35
+        max_abs_coordinate: 100.0
+        outlier_method: "radius_percentile"
+        radius_percentile: 99.7
+        high_detail_mode: false
+        voxel_size: 0.001
+        gaussian_enabled: true
+        gaussian_nn_scale_mult: 0.35
+        gaussian_min_scale: 0.00025
+        gaussian_max_scale: 0.008
+        gaussian_scale_percentile_low: 5.0
+        gaussian_scale_percentile_high: 85.0
+        gaussian_density_opacity: true
+        gaussian_min_alpha: 0.35
+        gaussian_max_alpha: 0.82
+        gaussian_surface_aligned: false
+        gaussian_max_surface_aligned_points: 8000000
+        mesh_enabled: false
+    target_frames: 180
+    selection_mode: "geometry_aware"
+    visual_shortlist_target: 220
+    probe_max_frames: 180
+    scan_stride: 10
+    shortlist_multiplier: 3
+    dedupe_similarity: 0.985
+    min_frame_gap: 10
+    prefilter_enabled: true
+    target_width: 1024
+    target_height: 768
+    analysis_width: 384
+    analysis_height: 288
+    orb_features: 1000
+    probe_image_size: 256
+    probe_dtype: "bfloat16"
+    probe_confidence_threshold: 1.0
+    probe_pnp_iters: 50
+    probe_focal_method: "first_view_from_global_head"
+    probe_model_name: "jedyang97/Fast3R_ViT_Large_512"
+    probe_max_parallel_views: 16
+    fast3r_image_size: 512
+    min_confidence_threshold: 1.05
+    confidence_keep_ratio: 0.85
+    view_conf_p50_min: 1.2
+    view_conf_p90_min: 1.45
+    weak_texture_retention: true
+    weak_texture_percentile: 35.0
+    weak_texture_min_conf_thr: 0.55
+    weak_texture_keep_ratio: 0.35
+    save_depth_maps: true
+    niter_pnp: 100
+    dtype: "bfloat16"
+    max_abs_coordinate: 100.0
+    outlier_method: "radius_percentile"
+    radius_percentile: 99.7
+    high_detail_mode: false
+    voxel_size: 0.001
+    scale_enabled: true
+    scale_reference_name: "room_height"
+    scale_reference_real: 2.5
+    scale_reference_axis: "z"
+    scale_reference_measured:
+    scale_percentile_low: 2.0
+    scale_percentile_high: 98.0
+    fail_without_scale: false
+    gaussian_enabled: true
+    gaussian_voxel_size: 0.0
+    gaussian_normal_radius: 0.0
+    gaussian_normal_max_nn: 64
+    gaussian_nn_scale_mult: 0.35
+    gaussian_min_scale: 0.00025
+    gaussian_max_scale: 0.008
+    gaussian_alpha: 0.85
+    gaussian_scale_percentile_low: 5.0
+    gaussian_scale_percentile_high: 85.0
+    gaussian_density_opacity: true
+    gaussian_min_alpha: 0.35
+    gaussian_max_alpha: 0.82
+    gaussian_surface_aligned: false
+    gaussian_max_surface_aligned_points: 8000000
+    mesh_enabled: false
+    mesh_method: "bpa"
+    mesh_voxel_size: 0.006
+    mesh_max_points: 1000000
+    bpa_radii: [0.004, 0.008, 0.016, 0.032]
+    poisson_depth: 10
+    poisson_scale: 1.1
+    poisson_linear_fit: false
+    poisson_trim_quantile: 0.005
+    crop_bbox_margin: 0.03
+    orient_normals: true
+    mesh_normal_radius: 0.0
+    mesh_normal_max_nn: 64
+    min_component_triangles: 1000
+    min_component_ratio: 0.01
+    laplacian_iterations: 2
+    laplacian_lambda: 0.25
+    target_triangles: 250000
+    color_vertices: true
+    save_intermediate: true
+
+viewer:
+  preferred: "viser"
+  geometry_mode: "gaussian"
+
+logging:
+  level: "INFO"

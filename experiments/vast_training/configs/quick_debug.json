@@ -1,0 +1,61 @@
+{
+  "task_name": "vast_finetune_scannet",
+  "run_name": "quick_debug_ga_head",
+  "stage": "ga_head",
+  "trainer": {
+    "devices": 1
+  },
+  "training": {
+    "num_views": 4,
+    "image_size": 384,
+    "batch_size": 1,
+    "batch_size_val": 1,
+    "num_workers": 2,
+    "num_workers_val": 1,
+    "precision": "16-mixed",
+    "lr": 2e-5,
+    "max_steps": 10,
+    "max_epochs": 5,
+    "accumulate_grad_batches": 1,
+    "checkpoint_every_n_epochs": 1,
+    "early_stopping_patience": 2,
+    "limit_train_batches": 2,
+    "limit_val_batches": 2,
+    "num_sanity_val_steps": 0,
+    "log_every_n_steps": 1,
+    "val_check_interval_steps": 5,
+    "pin_memory": true
+  },
+  "validation": {
+    "num_views": 4
+  },
+  "dataset": {
+    "include_indoor_eval_sets": false,
+    "train": {
+      "num_seq": 2,
+      "max_scenes": 2,
+      "min_thresh": 6,
+      "max_thresh": 18,
+      "kf_every": 1,
+      "frame_stride": 4,
+      "blur_filter": true,
+      "blur_threshold": 35.0
+    },
+    "val": {
+      "num_seq": 1,
+      "max_scenes": 1,
+      "min_thresh": 6,
+      "max_thresh": 18,
+      "kf_every": 1,
+      "frame_stride": 4,
+      "blur_filter": false,
+      "blur_threshold": 35.0
+    }
+  },
+  "oom_fallback": {
+    "enabled": true,
+    "batch_size": 1,
+    "num_views": 4,
+    "image_size": 320
+  }
+}

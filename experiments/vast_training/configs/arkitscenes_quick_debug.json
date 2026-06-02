@@ -1,0 +1,58 @@
+{
+  "task_name": "vast_finetune_arkitscenes",
+  "run_name": "quick_debug_ga_head_arkitscenes",
+  "stage": "ga_head",
+  "trainer": {
+    "devices": 1
+  },
+  "training": {
+    "num_views": 4,
+    "image_size": 384,
+    "batch_size": 1,
+    "batch_size_val": 1,
+    "num_workers": 2,
+    "num_workers_val": 1,
+    "precision": "16-mixed",
+    "lr": 2e-5,
+    "max_steps": 10,
+    "max_epochs": 5,
+    "accumulate_grad_batches": 1,
+    "checkpoint_every_n_epochs": 1,
+    "early_stopping_patience": 2,
+    "limit_train_batches": 2,
+    "limit_val_batches": 2,
+    "num_sanity_val_steps": 0,
+    "log_every_n_steps": 1,
+    "val_check_interval_steps": 5,
+    "pin_memory": true
+  },
+  "validation": {
+    "num_views": 4
+  },
+  "dataset": {
+    "name": "arkitscenes",
+    "root": "/workspace/datasets/arkitscenes_processed",
+    "include_indoor_eval_sets": false,
+    "train": {
+      "sample_count": 200,
+      "data_scaling": 0.1,
+      "num_samples_per_window": 2,
+      "window_size_factor": 4,
+      "ordered": false,
+      "aug_crop": 256
+    },
+    "val": {
+      "sample_count": 20,
+      "data_scaling": 0.1,
+      "num_samples_per_window": 1,
+      "window_size_factor": 4,
+      "ordered": true
+    }
+  },
+  "oom_fallback": {
+    "enabled": true,
+    "batch_size": 1,
+    "num_views": 4,
+    "image_size": 320
+  }
+}
