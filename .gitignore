@@ -41,6 +41,7 @@ Thumbs.db
 /agent/
 **/docs/
 *.md
+!/README.md
 *.docx
 *.pdf
 *.ipynb
