@@ -1,18 +1,8 @@
-"""
-Core package initialization
-"""
-from .pipeline import ReconstructionPipeline
-from .video_processor import VideoProcessor
-from .depth_estimator import DepthEstimator
-from .reconstructor import Reconstructor3D
-from .segmentation import SemanticSegmentator
-from .scene_editor import SceneEditor
+"""Legacy core namespace.
 
-__all__ = [
-    "ReconstructionPipeline",
-    "VideoProcessor",
-    "DepthEstimator", 
-    "Reconstructor3D",
-    "SemanticSegmentator",
-    "SceneEditor"
-]
+The active application architecture lives in ``src.app``, ``src.application``,
+``src.models``, ``src.pipeline``, and ``src.viewer``. This package is kept
+importable so legacy namespace checks do not fail on missing historical modules.
+"""
+
+__all__: list[str] = []

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import copy
-import json
 import logging
 import math
 from pathlib import Path
@@ -32,6 +31,7 @@ from PyQt6.QtWidgets import (
 
 from src.app.scene_list_widget import SceneListWidget
 from src.app.worker import PipelineWorker
+from src.application.scene_repository import SceneRepository
 from src.models.scene_result import SceneResult
 from src.pipeline.pipeline_factory import list_registered_pipelines
 from src.viewer.scene_viewer import launch_scene_viewer
@@ -87,7 +87,8 @@ class MainWindow(QMainWindow):
 
         src_root = Path(__file__).resolve().parents[1]
         index_path = Path(config.get("app", {}).get("scenes_index_path", "data/scenes_index.json"))
-        self.scenes_index_path = index_path if index_path.is_absolute() else src_root / index_path
+        scene_index_path = index_path if index_path.is_absolute() else src_root / index_path
+        self.scene_repository = SceneRepository(scene_index_path, logger=self.logger)
 
         self.setWindowTitle(config.get("app", {}).get("name", "Fast3R Desktop Wrapper"))
         self.resize(1180, 760)
@@ -992,9 +993,7 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Unexpected Result", "Pipeline finished but returned an invalid result.")
             return
 
-        records = self._read_scene_index()
-        records.insert(0, scene_result.to_record())
-        self._write_scene_index(records)
+        records = self.scene_repository.add_scene(scene_result)
         self.scene_list_widget.set_scenes(records)
         self.progress_bar.setValue(100)
         self.progress_label.setText(f"Finished: {scene_result.scene_id}")
@@ -1046,14 +1045,7 @@ class MainWindow(QMainWindow):
         self.scene_list_widget.set_scenes(records)
 
     def _read_scene_index(self) -> list[dict]:
-        if not self.scenes_index_path.exists():
-            self.scenes_index_path.parent.mkdir(parents=True, exist_ok=True)
-            self.scenes_index_path.write_text("[]", encoding="utf-8")
-        try:
-            return list(json.loads(self.scenes_index_path.read_text(encoding="utf-8")))
-        except json.JSONDecodeError:
-            return []
+        return self.scene_repository.list_records()
 
     def _write_scene_index(self, records: list[dict]) -> None:
-        self.scenes_index_path.parent.mkdir(parents=True, exist_ok=True)
-        self.scenes_index_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+        self.scene_repository.replace_records(records)
