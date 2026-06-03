@@ -32,9 +32,9 @@ from PyQt6.QtWidgets import (
 from src.app.scene_list_widget import SceneListWidget
 from src.app.worker import PipelineWorker
 from src.application.scene_repository import SceneRepository
+from src.application.viewer_service import ViewerService
 from src.models.scene_result import SceneResult
 from src.pipeline.pipeline_factory import list_registered_pipelines
-from src.viewer.scene_viewer import launch_scene_viewer
 
 
 class PipelineStageCard(QFrame):
@@ -89,6 +89,7 @@ class MainWindow(QMainWindow):
         index_path = Path(config.get("app", {}).get("scenes_index_path", "data/scenes_index.json"))
         scene_index_path = index_path if index_path.is_absolute() else src_root / index_path
         self.scene_repository = SceneRepository(scene_index_path, logger=self.logger)
+        self.viewer_service = ViewerService(config)
 
         self.setWindowTitle(config.get("app", {}).get("name", "Fast3R Desktop Wrapper"))
         self.resize(1180, 760)
@@ -1036,9 +1037,7 @@ class MainWindow(QMainWindow):
             return
 
         scene_result = SceneResult.from_record(scene_record)
-        preferred_viewer = self.config.get("viewer", {}).get("preferred", "viser")
-        geometry_mode = self.config.get("viewer", {}).get("geometry_mode", "gaussian")
-        launch_scene_viewer(scene_result, preferred_viewer=preferred_viewer, geometry_mode=geometry_mode)
+        self.viewer_service.open_scene(scene_result)
 
     def _load_scene_index(self) -> None:
         records = self._read_scene_index()
