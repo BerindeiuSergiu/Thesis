@@ -6,9 +6,12 @@ import math
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QAction, QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
     QComboBox,
+    QDockWidget,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -21,10 +24,13 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
-    QSizePolicy,
+    QHeaderView,
     QSplitter,
     QSpinBox,
+    QStatusBar,
     QTabWidget,
+    QTableView,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -37,43 +43,6 @@ from src.models.scene_result import SceneResult
 from src.pipeline.pipeline_factory import list_registered_pipelines
 
 
-class PipelineStageCard(QFrame):
-    def __init__(self, title: str, subtitle: str, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setObjectName("StageCard")
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.status = "pending"
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 10, 12, 10)
-        layout.setSpacing(5)
-
-        self.status_label = QLabel("Pending")
-        self.status_label.setObjectName("StageStatus")
-        self.title_label = QLabel(title)
-        self.title_label.setObjectName("StageTitle")
-        self.subtitle_label = QLabel(subtitle)
-        self.subtitle_label.setObjectName("StageSubtitle")
-        self.subtitle_label.setWordWrap(True)
-
-        layout.addWidget(self.status_label)
-        layout.addWidget(self.title_label)
-        layout.addWidget(self.subtitle_label)
-
-    def set_status(self, status: str) -> None:
-        self.status = status
-        labels = {
-            "pending": "Pending",
-            "active": "Running",
-            "done": "Complete",
-            "error": "Needs attention",
-        }
-        self.status_label.setText(labels.get(status, status.title()))
-        self.setProperty("status", status)
-        self.style().unpolish(self)
-        self.style().polish(self)
-
-
 class MainWindow(QMainWindow):
     def __init__(self, config: dict, parent=None) -> None:
         super().__init__(parent)
@@ -82,7 +51,7 @@ class MainWindow(QMainWindow):
         self.selected_video: Path | None = None
         self.session_presets: dict[str, dict] = {}
         self.worker: PipelineWorker | None = None
-        self.stage_cards: dict[str, PipelineStageCard] = {}
+        self.stage_rows: dict[str, int] = {}
         self.current_stage_key: str | None = None
 
         src_root = Path(__file__).resolve().parents[1]
@@ -98,6 +67,7 @@ class MainWindow(QMainWindow):
         self._build_layout()
         self._apply_style()
         self._load_scene_index()
+        self._sync_action_state()
 
     def _fast3r_config(self) -> dict:
         return dict(self.config.get("pipeline", {}).get("fast3r", {}))
@@ -127,26 +97,31 @@ class MainWindow(QMainWindow):
         if active_index >= 0:
             self.preset_combo.setCurrentIndex(active_index)
 
-        self.open_video_button = QPushButton("Open Video")
-        self.open_video_button.setObjectName("SecondaryButton")
-        self.calculate_params_button = QPushButton("Calculate Parameters")
-        self.calculate_params_button.setObjectName("SecondaryButton")
-        self.run_pipeline_button = QPushButton("Reconstruct Scene")
-        self.run_pipeline_button.setObjectName("PrimaryButton")
+        self.open_video_action = QAction("Open Video", self)
+        self.open_video_action.setToolTip("Choose the video that will be reconstructed.")
+        self.calculate_params_action = QAction("Analyze Video", self)
+        self.calculate_params_action.setToolTip("Inspect video properties and create a safe temporary preset.")
+        self.run_pipeline_action = QAction("Run Reconstruction", self)
+        self.run_pipeline_action.setToolTip("Start the Fast3R reconstruction pipeline.")
+        self.view_scene_action = QAction("Open Output", self)
+        self.view_scene_action.setToolTip("Open the selected or latest scene in the configured viewer.")
         self.view_scene_button = QPushButton("Open Output")
         self.view_scene_button.setObjectName("SecondaryButton")
 
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
+        self.progress_bar.setFixedWidth(260)
         self.progress_label = QLabel("Idle")
         self.progress_label.setObjectName("StatusLabel")
         self.scene_list_widget = SceneListWidget()
-        self.scene_list_widget.list_widget.currentItemChanged.connect(lambda *_: self.on_scene_selection_changed())
+        self.scene_list_widget.selection_changed.connect(self.on_scene_selection_changed)
 
-        self.preview_title = QLabel("Workspace Preview")
+        self.preview_title = QLabel("Viewport")
         self.preview_title.setObjectName("PreviewTitle")
-        self.preview_body = QLabel("Choose a video to begin, or select a processed scene from the library.")
+        self.preview_body = QLabel(
+            "No video selected.\n\nUse Open Video to choose an input, then Analyze Video to estimate run cost."
+        )
         self.preview_body.setObjectName("PreviewBody")
         self.preview_body.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.preview_body.setWordWrap(True)
@@ -209,11 +184,13 @@ class MainWindow(QMainWindow):
         self.laplacian_iterations_spin = self._spin(0, 20, int(fast3r.get("laplacian_iterations", 2)))
         self.laplacian_lambda_spin = self._double_spin(0.0, 1.0, float(fast3r.get("laplacian_lambda", 0.25)), 0.05, 3)
 
-        self.open_video_button.clicked.connect(self.open_video)
-        self.calculate_params_button.clicked.connect(self.calculate_parameters)
-        self.run_pipeline_button.clicked.connect(self.run_pipeline)
+        self.open_video_action.triggered.connect(self.open_video)
+        self.calculate_params_action.triggered.connect(self.calculate_parameters)
+        self.run_pipeline_action.triggered.connect(self.run_pipeline)
+        self.view_scene_action.triggered.connect(self.view_scene)
         self.view_scene_button.clicked.connect(self.view_scene)
         self.auto_preset_checkbox.toggled.connect(self._update_preset_visibility)
+        self._init_stage_model()
 
     def _spin(self, minimum: int, maximum: int, value: int, step: int = 1) -> QSpinBox:
         spin = QSpinBox()
@@ -237,88 +214,87 @@ class MainWindow(QMainWindow):
         spin.setValue(value)
         return spin
 
+    def _init_stage_model(self) -> None:
+        self.stage_model = QStandardItemModel(0, 4, self)
+        self.stage_model.setHorizontalHeaderLabels(["Stage", "Status", "Progress", "Detail"])
+        stages = [
+            ("frames", "Frames", "Pending", "Waiting for input selection."),
+            ("depth", "Fast3R", "Pending", "Model inference not started."),
+            ("reconstruct", "Geometry", "Pending", "Filtering and scale normalization pending."),
+            ("outputs", "Outputs", "Pending", "Gaussian and mesh export pending."),
+        ]
+        self.stage_rows.clear()
+        for row_index, (key, stage, status, detail) in enumerate(stages):
+            row = [
+                QStandardItem(stage),
+                QStandardItem(status),
+                QStandardItem("0%"),
+                QStandardItem(detail),
+            ]
+            for item in row:
+                item.setEditable(False)
+            self.stage_model.appendRow(row)
+            self.stage_rows[key] = row_index
+
     def _build_layout(self) -> None:
-        shell_layout = QHBoxLayout()
-        shell_layout.setContentsMargins(0, 0, 0, 0)
-        shell_layout.setSpacing(0)
-
-        shell_layout.addWidget(self._build_sidebar())
-
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.setObjectName("WorkspaceSplitter")
-        splitter.addWidget(self._build_workspace())
-        splitter.addWidget(self._build_inspector())
-        splitter.setStretchFactor(0, 4)
-        splitter.setStretchFactor(1, 2)
-        splitter.setSizes([820, 360])
-        shell_layout.addWidget(splitter, stretch=1)
-
-        container = QWidget()
-        container.setObjectName("AppRoot")
-        container.setLayout(shell_layout)
-        self.setCentralWidget(container)
+        self._build_toolbar()
+        self._build_status_bar()
+        self.setCentralWidget(self._build_workspace())
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self._build_scene_dock())
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self._build_properties_dock())
         self._update_preset_visibility(self.auto_preset_checkbox.isChecked())
 
-    def _build_sidebar(self) -> QWidget:
-        sidebar = QFrame()
-        sidebar.setObjectName("Sidebar")
-        sidebar.setFixedWidth(280)
-        layout = QVBoxLayout(sidebar)
-        layout.setContentsMargins(18, 18, 18, 18)
-        layout.setSpacing(16)
+    def _build_toolbar(self) -> None:
+        toolbar = QToolBar("Reconstruction")
+        toolbar.setObjectName("MainToolBar")
+        toolbar.setMovable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        toolbar.addAction(self.open_video_action)
+        toolbar.addAction(self.calculate_params_action)
+        toolbar.addSeparator()
+        toolbar.addAction(self.run_pipeline_action)
+        toolbar.addAction(self.view_scene_action)
+        self.addToolBar(toolbar)
 
-        title = QLabel("Recon Studio")
-        title.setObjectName("AppTitle")
-        subtitle = QLabel("Fast3R reconstruction workspace")
-        subtitle.setObjectName("MutedText")
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
-        layout.addSpacing(8)
-        layout.addWidget(self.scene_list_widget, stretch=1)
-        return sidebar
+    def _build_status_bar(self) -> None:
+        status_bar = QStatusBar()
+        status_bar.setObjectName("AppStatusBar")
+        status_bar.addWidget(self.progress_label, stretch=1)
+        status_bar.addPermanentWidget(self.progress_bar)
+        self.setStatusBar(status_bar)
+
+    def _build_scene_dock(self) -> QDockWidget:
+        dock = QDockWidget("Scene Library", self)
+        dock.setObjectName("SceneLibraryDock")
+        dock.setWidget(self.scene_list_widget)
+        return dock
+
+    def _build_properties_dock(self) -> QDockWidget:
+        dock = QDockWidget("Reconstruction Properties", self)
+        dock.setObjectName("PropertiesDock")
+        dock.setWidget(self._build_inspector())
+        return dock
 
     def _build_workspace(self) -> QWidget:
         workspace = QFrame()
         workspace.setObjectName("Workspace")
         layout = QVBoxLayout(workspace)
-        layout.setContentsMargins(20, 18, 20, 18)
-        layout.setSpacing(14)
-
-        header_row = QHBoxLayout()
-        heading = QLabel("3D Reconstruction Pipeline")
-        heading.setObjectName("Header")
-        header_row.addWidget(heading)
-        header_row.addStretch(1)
-        header_row.addWidget(self.run_pipeline_button)
-        layout.addLayout(header_row)
-        layout.addWidget(self._build_pipeline_view())
-        layout.addWidget(self._build_preview_panel(), stretch=1)
-        layout.addWidget(self._build_status_strip())
-        return workspace
-
-    def _build_pipeline_view(self) -> QWidget:
-        frame = QFrame()
-        frame.setObjectName("PipelineRail")
-        layout = QHBoxLayout(frame)
         layout.setContentsMargins(10, 10, 10, 10)
         layout.setSpacing(8)
 
-        stages = [
-            ("frames", "Frames", "Extract and rank video views"),
-            ("depth", "Depth", "Fast3R dense point maps"),
-            ("reconstruct", "Reconstruct", "Scale and merge geometry"),
-            ("outputs", "Outputs", "Gaussian / mesh export"),
-        ]
-        for key, title, subtitle in stages:
-            card = PipelineStageCard(title, subtitle)
-            card.mousePressEvent = lambda _event, stage_key=key: self.show_stage_details(stage_key)
-            self.stage_cards[key] = card
-            layout.addWidget(card, stretch=1)
-        return frame
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setObjectName("ViewportSplitter")
+        splitter.addWidget(self._build_preview_panel())
+        splitter.addWidget(self._build_stage_table())
+        splitter.setStretchFactor(0, 5)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([620, 160])
+        layout.addWidget(splitter, stretch=1)
+        return workspace
 
     def _build_preview_panel(self) -> QWidget:
         panel = QFrame()
-        panel.setObjectName("PreviewPanel")
+        panel.setObjectName("ViewportPanel")
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(20, 18, 20, 18)
         layout.setSpacing(12)
@@ -329,26 +305,33 @@ class MainWindow(QMainWindow):
         top.addWidget(self.view_scene_button)
         layout.addLayout(top)
 
-        preview_canvas = QFrame()
-        preview_canvas.setObjectName("PreviewCanvas")
-        canvas_layout = QVBoxLayout(preview_canvas)
+        viewport = QFrame()
+        viewport.setObjectName("ViewportCanvas")
+        canvas_layout = QVBoxLayout(viewport)
         canvas_layout.setContentsMargins(28, 28, 28, 28)
         canvas_layout.addStretch(1)
         canvas_layout.addWidget(self.preview_body)
         canvas_layout.addStretch(1)
-        layout.addWidget(preview_canvas, stretch=1)
+        layout.addWidget(viewport, stretch=1)
         return panel
 
-    def _build_status_strip(self) -> QWidget:
-        strip = QFrame()
-        strip.setObjectName("StatusStrip")
-        layout = QHBoxLayout(strip)
-        layout.setContentsMargins(14, 10, 14, 10)
-        layout.setSpacing(12)
-        layout.addWidget(self.progress_label, stretch=1)
-        self.progress_bar.setFixedWidth(260)
-        layout.addWidget(self.progress_bar)
-        return strip
+    def _build_stage_table(self) -> QWidget:
+        frame = QFrame()
+        frame.setObjectName("StageTablePanel")
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.stage_table = QTableView()
+        self.stage_table.setObjectName("StageTable")
+        self.stage_table.setModel(self.stage_model)
+        self.stage_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.stage_table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.stage_table.verticalHeader().setVisible(False)
+        self.stage_table.horizontalHeader().setStretchLastSection(True)
+        self.stage_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.stage_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        self.stage_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        layout.addWidget(self.stage_table)
+        return frame
 
     def _build_inspector(self) -> QWidget:
         inspector = QFrame()
@@ -359,14 +342,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(14)
 
         layout.addWidget(self._build_input_group())
-        details = QFrame()
-        details.setObjectName("DetailsPanel")
-        details_layout = QVBoxLayout(details)
-        details_layout.setContentsMargins(14, 14, 14, 14)
-        details_layout.setSpacing(8)
-        details_layout.addWidget(self.stage_detail_title)
-        details_layout.addWidget(self.stage_detail_body)
-        layout.addWidget(details)
+        self.stage_detail_title.setVisible(False)
+        self.stage_detail_body.setVisible(False)
         self.parameter_tabs = self._build_parameter_tabs()
         layout.addWidget(self.parameter_tabs, stretch=1)
         return inspector
@@ -378,12 +355,10 @@ class MainWindow(QMainWindow):
         layout.setVerticalSpacing(10)
         layout.addWidget(QLabel("Video"), 0, 0)
         layout.addWidget(self.video_label, 0, 1, 1, 2)
-        layout.addWidget(self.open_video_button, 1, 0, 1, 3)
-        layout.addWidget(QLabel("Pipeline"), 2, 0)
-        layout.addWidget(self.pipeline_combo, 2, 1, 1, 2)
-        layout.addWidget(self.auto_preset_checkbox, 3, 0)
-        layout.addWidget(self.preset_combo, 3, 1, 1, 2)
-        layout.addWidget(self.calculate_params_button, 4, 0, 1, 3)
+        layout.addWidget(QLabel("Pipeline"), 1, 0)
+        layout.addWidget(self.pipeline_combo, 1, 1, 1, 2)
+        layout.addWidget(self.auto_preset_checkbox, 2, 0)
+        layout.addWidget(self.preset_combo, 2, 1, 1, 2)
         return group
 
     def _build_parameter_tabs(self) -> QTabWidget:
@@ -447,15 +422,6 @@ class MainWindow(QMainWindow):
         layout.addRow("Smooth iterations", self.laplacian_iterations_spin)
         layout.addRow("Smooth lambda", self.laplacian_lambda_spin)
         return widget
-
-    def _build_run_group(self) -> QGroupBox:
-        group = QGroupBox("Run")
-        layout = QVBoxLayout(group)
-        layout.setSpacing(10)
-        layout.addWidget(self.progress_label)
-        layout.addWidget(self.progress_bar)
-        layout.addWidget(self.run_pipeline_button)
-        return group
 
     def _update_preset_visibility(self, enabled: bool) -> None:
         self.preset_combo.setEnabled(bool(enabled))
@@ -604,64 +570,50 @@ class MainWindow(QMainWindow):
                 background: #3b82f6;
                 border-radius: 5px;
             }
-            QListWidget#SceneList {
+            QToolBar#MainToolBar {
+                background: #11151d;
+                border-bottom: 1px solid #262c38;
+                spacing: 6px;
+                padding: 4px;
+            }
+            QStatusBar#AppStatusBar {
+                background: #11151d;
+                border-top: 1px solid #262c38;
+            }
+            QDockWidget {
+                titlebar-close-icon: none;
+                titlebar-normal-icon: none;
+            }
+            QDockWidget::title {
+                background: #151a23;
+                padding: 7px;
+                border-bottom: 1px solid #262c38;
+                font-weight: 700;
+            }
+            QTreeView#SceneTree, QTableView#StageTable {
                 background: #0f1218;
                 border: 1px solid #262c38;
-                border-radius: 8px;
-                padding: 6px;
-            }
-            QListWidget#SceneList::item {
-                padding: 9px;
-                margin: 2px;
-                border-radius: 7px;
                 color: #aeb7c6;
+                gridline-color: #262c38;
+                selection-background-color: #1d4ed8;
+                selection-color: #ffffff;
             }
-            QListWidget#SceneList::item:selected {
-                background: #1d4ed8;
-                color: #ffffff;
+            QHeaderView::section {
+                background: #151a23;
+                color: #cdd5e3;
+                border: 1px solid #262c38;
+                padding: 5px;
+                font-weight: 700;
             }
-            QFrame#PipelineRail, QFrame#PreviewPanel, QFrame#DetailsPanel, QFrame#StatusStrip {
+            QFrame#ViewportPanel, QFrame#StageTablePanel {
                 background: #151a23;
                 border: 1px solid #262c38;
                 border-radius: 8px;
             }
-            QFrame#PreviewCanvas {
+            QFrame#ViewportCanvas {
                 background: #0b0e13;
                 border: 1px solid #293142;
                 border-radius: 8px;
-            }
-            QFrame#StageCard {
-                background: #111721;
-                border: 1px solid #2a3342;
-                border-radius: 8px;
-            }
-            QFrame#StageCard:hover {
-                border-color: #3b82f6;
-            }
-            QFrame#StageCard[status="active"] {
-                background: #172033;
-                border-color: #3b82f6;
-            }
-            QFrame#StageCard[status="done"] {
-                border-color: #22c55e;
-            }
-            QFrame#StageCard[status="error"] {
-                border-color: #ef4444;
-            }
-            QLabel#StageStatus {
-                color: #8f9bad;
-                font-size: 11px;
-                font-weight: 700;
-                text-transform: uppercase;
-            }
-            QLabel#StageTitle {
-                color: #f4f7fb;
-                font-size: 15px;
-                font-weight: 800;
-            }
-            QLabel#StageSubtitle {
-                color: #8f9bad;
-                font-size: 12px;
             }
             """
         )
@@ -690,13 +642,29 @@ class MainWindow(QMainWindow):
         self.stage_detail_body.setText(body)
 
     def _set_stage_status(self, stage_key: str, status: str) -> None:
-        card = self.stage_cards.get(stage_key)
-        if card is not None:
-            card.set_status(status)
+        row = self.stage_rows.get(stage_key)
+        if row is None:
+            return
+        labels = {
+            "pending": "Pending",
+            "active": "Running",
+            "done": "Complete",
+            "error": "Needs attention",
+        }
+        progress = {
+            "pending": "0%",
+            "active": "In progress",
+            "done": "100%",
+            "error": "Stopped",
+        }
+        self.stage_model.item(row, 1).setText(labels.get(status, status.title()))
+        self.stage_model.item(row, 2).setText(progress.get(status, ""))
 
     def _reset_stage_statuses(self) -> None:
-        for card in self.stage_cards.values():
-            card.set_status("pending")
+        for key in self.stage_rows:
+            self._set_stage_status(key, "pending")
+            row = self.stage_rows[key]
+            self.stage_model.item(row, 3).setText("Waiting.")
         self.current_stage_key = None
 
     def _activate_stage(self, stage_key: str) -> None:
@@ -709,15 +677,15 @@ class MainWindow(QMainWindow):
                 self._set_stage_status(key, "done")
             elif key == stage_key:
                 self._set_stage_status(key, "active")
-            elif self.stage_cards.get(key, None) is not None and self.stage_cards[key].status != "done":
+            else:
                 self._set_stage_status(key, "pending")
         self.current_stage_key = stage_key
 
     def _update_stage_from_progress(self, message: str, failed: bool = False) -> None:
         if failed:
-            for key, card in self.stage_cards.items():
-                if card.status == "active":
-                    self._set_stage_status(key, "error")
+            if self.current_stage_key is not None:
+                self._set_stage_status(self.current_stage_key, "error")
+                self._set_stage_detail(self.current_stage_key, "Failed. See error details and log.")
             return
         text = message.lower()
         if "selecting input frames" in text:
@@ -733,8 +701,23 @@ class MainWindow(QMainWindow):
         elif "building gaussian" in text or "building poisson" in text or "splat output" in text:
             self._activate_stage("outputs")
         if "complete" in text or "finished" in text:
-            for key in self.stage_cards:
+            for key in self.stage_rows:
                 self._set_stage_status(key, "done")
+
+    def _set_stage_detail(self, stage_key: str, detail: str) -> None:
+        row = self.stage_rows.get(stage_key)
+        if row is not None:
+            self.stage_model.item(row, 3).setText(detail)
+
+    def _sync_action_state(self) -> None:
+        running = self.worker is not None and self.worker.isRunning()
+        has_video = self.selected_video is not None
+        has_scene = self.scene_list_widget.selected_scene() is not None
+        self.open_video_action.setEnabled(not running)
+        self.calculate_params_action.setEnabled(has_video and not running)
+        self.run_pipeline_action.setEnabled(has_video and not running)
+        self.view_scene_action.setEnabled(has_scene and not running)
+        self.view_scene_button.setEnabled(has_scene and not running)
 
     def open_video(self) -> None:
         filename, _ = QFileDialog.getOpenFileName(
@@ -748,11 +731,13 @@ class MainWindow(QMainWindow):
         self.selected_video = Path(filename)
         self.video_label.setText(str(self.selected_video))
         self.progress_label.setText("Video selected")
-        self.preview_title.setText("Input Video")
+        self.statusBar().showMessage("Video selected")
+        self.preview_title.setText("Input Summary")
         self.preview_body.setText(
-            f"{self.selected_video.name}\n\nUse Calculate Parameters for a temporary video-specific preset, "
-            "then Reconstruct Scene to run the pipeline."
+            f"{self.selected_video.name}\n\n"
+            "Analyze Video to create a temporary input-aware preset, or run with the current settings."
         )
+        self._sync_action_state()
 
     def calculate_parameters(self) -> None:
         if self.selected_video is None:
@@ -775,6 +760,25 @@ class MainWindow(QMainWindow):
             "Calculated: "
             f"{preset['target_frames']} frames, stride {preset['scan_stride']}, "
             f"Fast3R {preset['fast3r_image_size']}"
+        )
+        self.statusBar().showMessage(self.progress_label.text())
+        self.preview_title.setText("Run Estimate")
+        self.preview_body.setText(
+            "\n".join(
+                [
+                    f"Video: {self.selected_video.name}",
+                    f"Resolution: {report['width']} x {report['height']}",
+                    f"Duration: {report['duration_seconds']:.1f}s",
+                    f"Total frames: {report['total_frames']}",
+                    "",
+                    f"Selected frames target: {preset['target_frames']}",
+                    f"Scan stride: {preset['scan_stride']}",
+                    f"Fast3R image size: {preset['fast3r_image_size']}",
+                    f"Confidence min: {preset['min_confidence_threshold']:.2f}",
+                    "",
+                    "Output: Gaussian initialization; mesh disabled for faster inspection.",
+                ]
+            )
         )
         QMessageBox.information(
             self,
@@ -915,19 +919,22 @@ class MainWindow(QMainWindow):
         pipeline_name = self.pipeline_combo.currentText()
         self.progress_bar.setValue(0)
         self.progress_label.setText("Starting pipeline...")
+        self.statusBar().showMessage("Starting pipeline...")
         self.preview_title.setText("Reconstruction Running")
-        self.preview_body.setText("The pipeline is processing the selected video. Stage cards update as work progresses.")
+        self.preview_body.setText("The pipeline is processing the selected video. Stage progress is shown below.")
         self._reset_stage_statuses()
         self._set_stage_status("frames", "active")
-        self.run_pipeline_button.setEnabled(False)
+        self._set_stage_detail("frames", "Selecting and ranking input frames.")
+        self._sync_action_state()
 
         run_config = self._config_with_ui_overrides()
         self.worker = PipelineWorker(pipeline_name, run_config, str(self.selected_video))
         self.worker.progress_changed.connect(self.on_progress_changed)
         self.worker.succeeded.connect(self.on_pipeline_succeeded)
         self.worker.failed.connect(self.on_pipeline_failed)
-        self.worker.finished.connect(lambda: self.run_pipeline_button.setEnabled(True))
+        self.worker.finished.connect(self._sync_action_state)
         self.worker.start()
+        self._sync_action_state()
 
     def _config_with_ui_overrides(self) -> dict:
         run_config = copy.deepcopy(self.config)
@@ -986,7 +993,10 @@ class MainWindow(QMainWindow):
     def on_progress_changed(self, percent: int, message: str) -> None:
         self.progress_bar.setValue(max(0, min(100, percent)))
         self.progress_label.setText(message)
+        self.statusBar().showMessage(message)
         self._update_stage_from_progress(message)
+        if self.current_stage_key:
+            self._set_stage_detail(self.current_stage_key, message)
 
     def on_pipeline_succeeded(self, result: object) -> None:
         scene_result = result if isinstance(result, SceneResult) else None
@@ -998,20 +1008,30 @@ class MainWindow(QMainWindow):
         self.scene_list_widget.set_scenes(records)
         self.progress_bar.setValue(100)
         self.progress_label.setText(f"Finished: {scene_result.scene_id}")
-        for key in self.stage_cards:
+        self.statusBar().showMessage(f"Finished: {scene_result.scene_id}")
+        for key in self.stage_rows:
             self._set_stage_status(key, "done")
         self.preview_title.setText(scene_result.scene_id)
         self.preview_body.setText(
-            "Scene reconstruction finished.\n\nOpen the selected output to inspect the Gaussian splat in the web viewer."
+            "Scene reconstruction finished.\n\n"
+            f"Source: {scene_result.source_video.name}\n"
+            f"Output directory: {scene_result.output_dir}\n\n"
+            "Use Open Output to inspect the generated Gaussian/point-cloud result."
         )
+        self._sync_action_state()
         QMessageBox.information(self, "Pipeline Finished", f"Scene created: {scene_result.scene_id}")
 
     def on_pipeline_failed(self, error_details: str) -> None:
         self.logger.error("Pipeline failed:\n%s", error_details)
         self.progress_label.setText("Pipeline failed")
+        self.statusBar().showMessage("Pipeline failed")
         self._update_stage_from_progress("failed", failed=True)
         self.preview_title.setText("Run Failed")
-        self.preview_body.setText("The pipeline stopped before producing a complete scene. Check the error dialog for details.")
+        self.preview_body.setText(
+            "The pipeline stopped before producing a complete scene.\n\n"
+            "Suggested recovery: reduce selected frames, disable mesh/high-detail options, or inspect the log."
+        )
+        self._sync_action_state()
         QMessageBox.critical(self, "Pipeline Failed", error_details)
 
     def on_scene_selection_changed(self) -> None:
@@ -1029,6 +1049,7 @@ class MainWindow(QMainWindow):
             lines.append(f"Points: {points}")
         lines.append("Output ready for web-based Gaussian/point-cloud preview.")
         self.preview_body.setText("\n".join(lines))
+        self._sync_action_state()
 
     def view_scene(self) -> None:
         scene_record = self.scene_list_widget.selected_scene()

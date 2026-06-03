@@ -2,55 +2,72 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtWidgets import QLabel, QListWidget, QListWidgetItem, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QStandardItem, QStandardItemModel
+from PyQt6.QtWidgets import QAbstractItemView, QLabel, QTreeView, QVBoxLayout, QWidget
 
 
 class SceneListWidget(QWidget):
+    selection_changed = pyqtSignal()
+
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self.title_label = QLabel("Scene Library")
         self.title_label.setObjectName("SidebarTitle")
-        self.list_widget = QListWidget()
-        self.list_widget.setObjectName("SceneList")
-        self.list_widget.setSpacing(6)
+        self.tree_view = QTreeView()
+        self.tree_view.setObjectName("SceneTree")
+        self.tree_view.setRootIsDecorated(False)
+        self.tree_view.setAlternatingRowColors(True)
+        self.tree_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tree_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.scene_model = QStandardItemModel(0, 4, self)
+        self.scene_model.setHorizontalHeaderLabels(["Scene", "Output", "Points", "Source"])
+        self.tree_view.setModel(self.scene_model)
+        self.tree_view.selectionModel().selectionChanged.connect(lambda *_: self.selection_changed.emit())
         self.empty_label = QLabel("No processed scenes yet.")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self.title_label)
-        layout.addWidget(self.list_widget)
+        layout.addWidget(self.tree_view)
         layout.addWidget(self.empty_label)
 
         self._sync_empty_state()
 
     def set_scenes(self, scenes: list[dict]) -> None:
-        self.list_widget.clear()
+        self.scene_model.removeRows(0, self.scene_model.rowCount())
         for scene in scenes:
-            item = QListWidgetItem(self._scene_label(scene))
-            item.setData(Qt.ItemDataRole.UserRole, scene)
-            item.setToolTip(str(scene.get("output_dir", "")))
-            item.setSizeHint(QSize(220, 76))
-            self.list_widget.addItem(item)
+            row = self._scene_row(scene)
+            for item in row:
+                item.setData(scene, Qt.ItemDataRole.UserRole)
+                item.setToolTip(str(scene.get("output_dir", "")))
+                item.setEditable(False)
+            self.scene_model.appendRow(row)
+        self.tree_view.resizeColumnToContents(0)
+        self.tree_view.resizeColumnToContents(1)
+        self.tree_view.resizeColumnToContents(2)
+        if self.scene_model.rowCount() > 0:
+            self.tree_view.setCurrentIndex(self.scene_model.index(0, 0))
         self._sync_empty_state()
 
     def selected_scene(self) -> dict | None:
-        item = self.list_widget.currentItem()
-        if item is None:
+        index = self.tree_view.currentIndex()
+        if not index.isValid():
             return None
-        return item.data(Qt.ItemDataRole.UserRole)
+        return index.siblingAtColumn(0).data(Qt.ItemDataRole.UserRole)
 
     def _sync_empty_state(self) -> None:
-        has_items = self.list_widget.count() > 0
+        has_items = self.scene_model.rowCount() > 0
         self.empty_label.setVisible(not has_items)
-        self.list_widget.setVisible(has_items)
+        self.tree_view.setVisible(has_items)
 
     @staticmethod
-    def _scene_label(scene: dict) -> str:
+    def _scene_row(scene: dict) -> list[QStandardItem]:
         scene_id = scene.get("scene_id", "unknown_scene")
         source_video = Path(str(scene.get("source_video", ""))).name
         metadata = scene.get("metadata", {}) if isinstance(scene.get("metadata", {}), dict) else {}
         outputs = metadata.get("outputs", {}) if isinstance(metadata, dict) else {}
+        points = metadata.get("num_points_final") or metadata.get("processed_scaled_points") or ""
         has_gaussian = bool(outputs.get("gaussian_ply")) or bool(
             (metadata.get("gaussian_splat", {}) if isinstance(metadata, dict) else {}).get("gaussian_ply")
         )
@@ -64,4 +81,9 @@ class SceneListWidget(QWidget):
         output_text = " / ".join(badges) if badges else "PLY"
         if len(source_video) > 28:
             source_video = source_video[:25] + "..."
-        return f"{scene_id}\n{status} - {output_text}\n{source_video}"
+        return [
+            QStandardItem(str(scene_id)),
+            QStandardItem(f"{status}: {output_text}"),
+            QStandardItem(str(points) if points else "-"),
+            QStandardItem(source_video),
+        ]
