@@ -4,6 +4,7 @@ import json
 import logging
 from pathlib import Path
 
+from src.models.scene import Scene
 from src.models.scene_result import SceneResult
 
 
@@ -25,6 +26,36 @@ class SceneRepository:
     def add_scene(self, scene_result: SceneResult) -> list[dict]:
         records = self.list_records()
         records.insert(0, scene_result.to_record())
+        self.replace_records(records)
+        return records
+
+    def create_scene(self, scene: Scene) -> list[dict]:
+        records = self.list_records()
+        records.insert(0, scene.to_record())
+        self.replace_records(records)
+        return records
+
+    def update_scene(self, scene: Scene) -> list[dict]:
+        records = self.list_records()
+        scene_record = scene.to_record()
+        for index, record in enumerate(records):
+            if record.get("scene_id") == scene.scene_id:
+                records[index] = scene_record
+                self.replace_records(records)
+                return records
+        records.insert(0, scene_record)
+        self.replace_records(records)
+        return records
+
+    def update_scene_with_result(self, scene_id: str, result: SceneResult) -> list[dict]:
+        records = self.list_records()
+        for index, record in enumerate(records):
+            if record.get("scene_id") == scene_id:
+                scene = Scene.from_record(record).with_result(result)
+                records[index] = scene.to_record()
+                self.replace_records(records)
+                return records
+        records.insert(0, result.to_record())
         self.replace_records(records)
         return records
 

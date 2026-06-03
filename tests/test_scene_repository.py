@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from src.application.scene_repository import SceneRepository
+from src.models.scene import Scene
 from src.models.scene_result import SceneResult
 
 
@@ -71,6 +72,35 @@ class SceneRepositoryTests(unittest.TestCase):
             self.assertEqual([record["scene_id"] for record in records], ["new_scene", "old_scene"])
             self.assertEqual(records[0]["pointcloud_path"], "pointcloud.ply")
             self.assertEqual(records[0]["mesh_path"], "")
+
+    def test_update_scene_with_result_preserves_user_scene_name(self) -> None:
+        with temporary_workspace() as tmpdir:
+            index_path = Path(tmpdir) / "scenes.json"
+            repository = SceneRepository(index_path)
+            scene = Scene(
+                scene_id="scene_internal",
+                name="Living Room Apartment",
+                source_video=Path("living_room.mp4"),
+                pipeline="default",
+                reconstruction_preset="high_quality_detail",
+                created_at="2026-06-03T12:00:00",
+            )
+            repository.create_scene(scene)
+            result = SceneResult(
+                scene_id="scene_20260603_120100",
+                source_video=Path("living_room.mp4"),
+                output_dir=Path("outputs/scene_20260603_120100"),
+                pointcloud_path=Path("outputs/scene_20260603_120100/cloud.ply"),
+                metadata={"outputs": {"gaussian_ply": "gaussian.ply"}},
+            )
+
+            records = repository.update_scene_with_result("scene_internal", result)
+
+            self.assertEqual(len(records), 1)
+            self.assertEqual(records[0]["scene_id"], "scene_internal")
+            self.assertEqual(records[0]["name"], "Living Room Apartment")
+            self.assertEqual(records[0]["status"], "Ready")
+            self.assertEqual(records[0]["metadata"]["pipeline_output_id"], "scene_20260603_120100")
 
 
 if __name__ == "__main__":

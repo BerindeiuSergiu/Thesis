@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from pathlib import Path
+from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QStandardItem, QStandardItemModel
 from PyQt6.QtWidgets import QAbstractItemView, QLabel, QTreeView, QVBoxLayout, QWidget
+
+from src.models.scene import Scene
 
 
 class SceneListWidget(QWidget):
@@ -20,8 +22,8 @@ class SceneListWidget(QWidget):
         self.tree_view.setAlternatingRowColors(True)
         self.tree_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tree_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        self.scene_model = QStandardItemModel(0, 4, self)
-        self.scene_model.setHorizontalHeaderLabels(["Scene", "Output", "Points", "Source"])
+        self.scene_model = QStandardItemModel(0, 5, self)
+        self.scene_model.setHorizontalHeaderLabels(["Scene", "Status", "Created", "Pipeline", "Reconstruction"])
         self.tree_view.setModel(self.scene_model)
         self.tree_view.selectionModel().selectionChanged.connect(lambda *_: self.selection_changed.emit())
         self.empty_label = QLabel("No processed scenes yet.")
@@ -46,6 +48,7 @@ class SceneListWidget(QWidget):
         self.tree_view.resizeColumnToContents(0)
         self.tree_view.resizeColumnToContents(1)
         self.tree_view.resizeColumnToContents(2)
+        self.tree_view.resizeColumnToContents(3)
         if self.scene_model.rowCount() > 0:
             self.tree_view.setCurrentIndex(self.scene_model.index(0, 0))
         self._sync_empty_state()
@@ -56,6 +59,13 @@ class SceneListWidget(QWidget):
             return None
         return index.siblingAtColumn(0).data(Qt.ItemDataRole.UserRole)
 
+    def select_scene(self, scene_id: str) -> None:
+        for row in range(self.scene_model.rowCount()):
+            record = self.scene_model.index(row, 0).data(Qt.ItemDataRole.UserRole)
+            if isinstance(record, dict) and record.get("scene_id") == scene_id:
+                self.tree_view.setCurrentIndex(self.scene_model.index(row, 0))
+                return
+
     def _sync_empty_state(self) -> None:
         has_items = self.scene_model.rowCount() > 0
         self.empty_label.setVisible(not has_items)
@@ -63,27 +73,20 @@ class SceneListWidget(QWidget):
 
     @staticmethod
     def _scene_row(scene: dict) -> list[QStandardItem]:
-        scene_id = scene.get("scene_id", "unknown_scene")
-        source_video = Path(str(scene.get("source_video", ""))).name
-        metadata = scene.get("metadata", {}) if isinstance(scene.get("metadata", {}), dict) else {}
-        outputs = metadata.get("outputs", {}) if isinstance(metadata, dict) else {}
-        points = metadata.get("num_points_final") or metadata.get("processed_scaled_points") or ""
-        has_gaussian = bool(outputs.get("gaussian_ply")) or bool(
-            (metadata.get("gaussian_splat", {}) if isinstance(metadata, dict) else {}).get("gaussian_ply")
-        )
-        has_mesh = bool(outputs.get("mesh_ply")) or bool(scene.get("mesh_path"))
-        badges = []
-        if has_gaussian:
-            badges.append("Gaussian")
-        if has_mesh:
-            badges.append("Mesh")
-        status = "Ready" if badges else "Point Cloud"
-        output_text = " / ".join(badges) if badges else "PLY"
-        if len(source_video) > 28:
-            source_video = source_video[:25] + "..."
+        scene_entity = Scene.from_record(scene)
         return [
-            QStandardItem(str(scene_id)),
-            QStandardItem(f"{status}: {output_text}"),
-            QStandardItem(str(points) if points else "-"),
-            QStandardItem(source_video),
+            QStandardItem(f"[Scene] {scene_entity.name}"),
+            QStandardItem(scene_entity.status),
+            QStandardItem(_format_created_at(scene_entity.created_at)),
+            QStandardItem(scene_entity.pipeline),
+            QStandardItem(scene_entity.reconstruction_type),
         ]
+
+
+def _format_created_at(value: str) -> str:
+    if not value:
+        return "-"
+    try:
+        return datetime.fromisoformat(value).strftime("%d-%m-%Y")
+    except ValueError:
+        return value[:10]

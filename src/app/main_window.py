@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import logging
 import math
+from datetime import datetime
 from pathlib import Path
 
 from PyQt6.QtCore import Qt
@@ -11,9 +12,9 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
+    QDialog,
     QDockWidget,
     QDoubleSpinBox,
-    QFileDialog,
     QFormLayout,
     QFrame,
     QGridLayout,
@@ -35,10 +36,12 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.app.new_scene_dialog import NewSceneDialog
 from src.app.scene_list_widget import SceneListWidget
 from src.app.worker import PipelineWorker
 from src.application.scene_repository import SceneRepository
 from src.application.viewer_service import ViewerService
+from src.models.scene import Scene
 from src.models.scene_result import SceneResult
 from src.pipeline.pipeline_factory import list_registered_pipelines
 
@@ -49,6 +52,8 @@ class MainWindow(QMainWindow):
         self.config = config
         self.logger = logging.getLogger(self.__class__.__name__)
         self.selected_video: Path | None = None
+        self.selected_scene_id: str | None = None
+        self.running_scene_id: str | None = None
         self.session_presets: dict[str, dict] = {}
         self.worker: PipelineWorker | None = None
         self.stage_rows: dict[str, int] = {}
@@ -97,10 +102,10 @@ class MainWindow(QMainWindow):
         if active_index >= 0:
             self.preset_combo.setCurrentIndex(active_index)
 
-        self.open_video_action = QAction("Open Video", self)
-        self.open_video_action.setToolTip("Choose the video that will be reconstructed.")
+        self.new_scene_action = QAction("New Scene", self)
+        self.new_scene_action.setToolTip("Create a named Scene that references a source video.")
         self.calculate_params_action = QAction("Analyze Video", self)
-        self.calculate_params_action.setToolTip("Inspect video properties and create a safe temporary preset.")
+        self.calculate_params_action.setToolTip("Inspect the selected Scene video and create a safe temporary preset.")
         self.run_pipeline_action = QAction("Run Reconstruction", self)
         self.run_pipeline_action.setToolTip("Start the Fast3R reconstruction pipeline.")
         self.view_scene_action = QAction("Open Output", self)
@@ -120,7 +125,7 @@ class MainWindow(QMainWindow):
         self.preview_title = QLabel("Viewport")
         self.preview_title.setObjectName("PreviewTitle")
         self.preview_body = QLabel(
-            "No video selected.\n\nUse Open Video to choose an input, then Analyze Video to estimate run cost."
+            "No Scene selected.\n\nUse New Scene to define a scene, choose its source video, and configure reconstruction."
         )
         self.preview_body.setObjectName("PreviewBody")
         self.preview_body.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -184,7 +189,7 @@ class MainWindow(QMainWindow):
         self.laplacian_iterations_spin = self._spin(0, 20, int(fast3r.get("laplacian_iterations", 2)))
         self.laplacian_lambda_spin = self._double_spin(0.0, 1.0, float(fast3r.get("laplacian_lambda", 0.25)), 0.05, 3)
 
-        self.open_video_action.triggered.connect(self.open_video)
+        self.new_scene_action.triggered.connect(self.new_scene)
         self.calculate_params_action.triggered.connect(self.calculate_parameters)
         self.run_pipeline_action.triggered.connect(self.run_pipeline)
         self.view_scene_action.triggered.connect(self.view_scene)
@@ -249,7 +254,7 @@ class MainWindow(QMainWindow):
         toolbar.setObjectName("MainToolBar")
         toolbar.setMovable(False)
         toolbar.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        toolbar.addAction(self.open_video_action)
+        toolbar.addAction(self.new_scene_action)
         toolbar.addAction(self.calculate_params_action)
         toolbar.addSeparator()
         toolbar.addAction(self.run_pipeline_action)
@@ -711,37 +716,47 @@ class MainWindow(QMainWindow):
 
     def _sync_action_state(self) -> None:
         running = self.worker is not None and self.worker.isRunning()
-        has_video = self.selected_video is not None
-        has_scene = self.scene_list_widget.selected_scene() is not None
-        self.open_video_action.setEnabled(not running)
+        scene_record = self.scene_list_widget.selected_scene()
+        scene = Scene.from_record(scene_record) if scene_record is not None else None
+        has_scene = scene is not None
+        has_video = scene is not None and bool(str(scene.source_video))
+        has_output = scene is not None and scene.output_dir is not None and scene.status == "Ready"
+        self.new_scene_action.setEnabled(not running)
         self.calculate_params_action.setEnabled(has_video and not running)
         self.run_pipeline_action.setEnabled(has_video and not running)
-        self.view_scene_action.setEnabled(has_scene and not running)
-        self.view_scene_button.setEnabled(has_scene and not running)
+        self.view_scene_action.setEnabled(has_output and not running)
+        self.view_scene_button.setEnabled(has_output and not running)
 
-    def open_video(self) -> None:
-        filename, _ = QFileDialog.getOpenFileName(
-            self,
-            "Choose a Video",
-            "",
-            "Video Files (*.mp4 *.mov *.avi *.mkv *.webm)",
+    def new_scene(self) -> None:
+        fast3r = self._fast3r_config()
+        presets = sorted((fast3r.get("presets") or {}).keys())
+        dialog = NewSceneDialog(
+            pipelines=list_registered_pipelines(),
+            presets=presets,
+            default_pipeline=self.pipeline_combo.currentText(),
+            default_preset=self.preset_combo.currentText(),
+            parent=self,
         )
-        if not filename:
+        if dialog.exec() != QDialog.DialogCode.Accepted:
             return
-        self.selected_video = Path(filename)
-        self.video_label.setText(str(self.selected_video))
-        self.progress_label.setText("Video selected")
-        self.statusBar().showMessage("Video selected")
-        self.preview_title.setText("Input Summary")
-        self.preview_body.setText(
-            f"{self.selected_video.name}\n\n"
-            "Analyze Video to create a temporary input-aware preset, or run with the current settings."
-        )
+        scene = dialog.scene()
+        records = self.scene_repository.create_scene(scene)
+        self.scene_list_widget.set_scenes(records)
+        self.scene_list_widget.select_scene(scene.scene_id)
+        self.selected_scene_id = scene.scene_id
+        self.selected_video = scene.source_video
+        self.video_label.setText(str(scene.source_video))
+        self.pipeline_combo.setCurrentText(scene.pipeline)
+        if scene.reconstruction_preset:
+            self.preset_combo.setCurrentText(scene.reconstruction_preset)
+        self.progress_label.setText(f"Scene created: {scene.name}")
+        self.statusBar().showMessage(f"Scene created: {scene.name}")
+        self._show_scene_details(scene)
         self._sync_action_state()
 
     def calculate_parameters(self) -> None:
         if self.selected_video is None:
-            QMessageBox.information(self, "No Video", "Please choose a video before calculating parameters.")
+            QMessageBox.information(self, "No Scene", "Please create or select a Scene before analyzing video.")
             return
         try:
             preset, report = self._calculate_video_preset(self.selected_video)
@@ -909,26 +924,47 @@ class MainWindow(QMainWindow):
         return preset, preset["calculated_video_report"]
 
     def run_pipeline(self) -> None:
-        if self.selected_video is None:
-            QMessageBox.warning(self, "No Video", "Please choose a video before running the pipeline.")
+        scene_record = self.scene_list_widget.selected_scene()
+        if scene_record is None:
+            QMessageBox.warning(self, "No Scene", "Please create or select a Scene before running reconstruction.")
+            return
+        scene = Scene.from_record(scene_record)
+        if not str(scene.source_video):
+            QMessageBox.warning(self, "No Source Video", "The selected Scene does not reference a source video.")
             return
         if self.worker is not None and self.worker.isRunning():
             QMessageBox.information(self, "Busy", "The pipeline is already running.")
             return
 
-        pipeline_name = self.pipeline_combo.currentText()
+        self.selected_scene_id = scene.scene_id
+        self.running_scene_id = scene.scene_id
+        self.selected_video = scene.source_video
+        pipeline_name = scene.pipeline or self.pipeline_combo.currentText()
+        running_scene = Scene.from_record(scene.to_record())
+        running_scene.status = "Running"
+        running_scene.pipeline = pipeline_name
+        running_scene.reconstruction_preset = self.preset_combo.currentText()
+        records = self.scene_repository.update_scene(running_scene)
+        self.scene_list_widget.set_scenes(records)
+        self.scene_list_widget.select_scene(scene.scene_id)
         self.progress_bar.setValue(0)
         self.progress_label.setText("Starting pipeline...")
         self.statusBar().showMessage("Starting pipeline...")
-        self.preview_title.setText("Reconstruction Running")
-        self.preview_body.setText("The pipeline is processing the selected video. Stage progress is shown below.")
+        self.preview_title.setText(f"Reconstructing: {scene.name}")
+        self.preview_body.setText(
+            "The selected Scene is being reconstructed.\n\n"
+            f"Video: {scene.source_video.name}\n"
+            f"Pipeline: {pipeline_name}\n"
+            f"Preset: {self.preset_combo.currentText() or '-'}\n\n"
+            "Stage progress is shown below."
+        )
         self._reset_stage_statuses()
         self._set_stage_status("frames", "active")
         self._set_stage_detail("frames", "Selecting and ranking input frames.")
         self._sync_action_state()
 
         run_config = self._config_with_ui_overrides()
-        self.worker = PipelineWorker(pipeline_name, run_config, str(self.selected_video))
+        self.worker = PipelineWorker(pipeline_name, run_config, str(scene.source_video))
         self.worker.progress_changed.connect(self.on_progress_changed)
         self.worker.succeeded.connect(self.on_pipeline_succeeded)
         self.worker.failed.connect(self.on_pipeline_failed)
@@ -1004,25 +1040,32 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Unexpected Result", "Pipeline finished but returned an invalid result.")
             return
 
-        records = self.scene_repository.add_scene(scene_result)
+        scene_id = self.running_scene_id or self.selected_scene_id or scene_result.scene_id
+        records = self.scene_repository.update_scene_with_result(scene_id, scene_result)
         self.scene_list_widget.set_scenes(records)
+        self.scene_list_widget.select_scene(scene_id)
+        scene_record = self.scene_list_widget.selected_scene()
+        scene = Scene.from_record(scene_record) if scene_record is not None else Scene.from_record(scene_result.to_record())
         self.progress_bar.setValue(100)
-        self.progress_label.setText(f"Finished: {scene_result.scene_id}")
-        self.statusBar().showMessage(f"Finished: {scene_result.scene_id}")
+        self.progress_label.setText(f"Finished: {scene.name}")
+        self.statusBar().showMessage(f"Finished: {scene.name}")
         for key in self.stage_rows:
             self._set_stage_status(key, "done")
-        self.preview_title.setText(scene_result.scene_id)
-        self.preview_body.setText(
-            "Scene reconstruction finished.\n\n"
-            f"Source: {scene_result.source_video.name}\n"
-            f"Output directory: {scene_result.output_dir}\n\n"
-            "Use Open Output to inspect the generated Gaussian/point-cloud result."
-        )
+        self._show_scene_details(scene)
+        self.running_scene_id = None
         self._sync_action_state()
-        QMessageBox.information(self, "Pipeline Finished", f"Scene created: {scene_result.scene_id}")
+        QMessageBox.information(self, "Reconstruction Finished", f"Scene ready: {scene.name}")
 
     def on_pipeline_failed(self, error_details: str) -> None:
         self.logger.error("Pipeline failed:\n%s", error_details)
+        if self.running_scene_id:
+            scene_record = self.scene_list_widget.selected_scene()
+            if scene_record is not None:
+                scene = Scene.from_record(scene_record)
+                scene.status = "Failed"
+                records = self.scene_repository.update_scene(scene)
+                self.scene_list_widget.set_scenes(records)
+                self.scene_list_widget.select_scene(scene.scene_id)
         self.progress_label.setText("Pipeline failed")
         self.statusBar().showMessage("Pipeline failed")
         self._update_stage_from_progress("failed", failed=True)
@@ -1031,6 +1074,7 @@ class MainWindow(QMainWindow):
             "The pipeline stopped before producing a complete scene.\n\n"
             "Suggested recovery: reduce selected frames, disable mesh/high-detail options, or inspect the log."
         )
+        self.running_scene_id = None
         self._sync_action_state()
         QMessageBox.critical(self, "Pipeline Failed", error_details)
 
@@ -1038,23 +1082,67 @@ class MainWindow(QMainWindow):
         scene_record = self.scene_list_widget.selected_scene()
         if scene_record is None:
             return
-        scene_id = scene_record.get("scene_id", "Scene")
-        source = Path(str(scene_record.get("source_video", ""))).name
-        metadata = scene_record.get("metadata", {}) if isinstance(scene_record.get("metadata", {}), dict) else {}
-        points = metadata.get("num_points_final") or metadata.get("processed_scaled_points") or ""
-        output_dir = scene_record.get("output_dir", "")
-        self.preview_title.setText(str(scene_id))
-        lines = [f"Source: {source}"]
-        if points:
-            lines.append(f"Points: {points}")
-        lines.append("Output ready for web-based Gaussian/point-cloud preview.")
-        self.preview_body.setText("\n".join(lines))
+        scene = Scene.from_record(scene_record)
+        self.selected_scene_id = scene.scene_id
+        self.selected_video = scene.source_video
+        self.video_label.setText(str(scene.source_video))
+        self.pipeline_combo.setCurrentText(scene.pipeline)
+        if scene.reconstruction_preset:
+            self.preset_combo.setCurrentText(scene.reconstruction_preset)
+        self._show_scene_details(scene)
         self._sync_action_state()
+
+    def _show_scene_details(self, scene: Scene) -> None:
+        metadata = scene.metadata if isinstance(scene.metadata, dict) else {}
+        frames = (
+            metadata.get("num_selected_frames")
+            or metadata.get("selected_frames")
+            or metadata.get("frames_selected")
+            or metadata.get("frame_count")
+            or "-"
+        )
+        points = metadata.get("num_points_final") or metadata.get("processed_scaled_points") or "-"
+        tags = ", ".join(scene.tags) if scene.tags else "-"
+        description = scene.description or "-"
+        created = self._format_scene_date(scene.created_at)
+        video_name = scene.source_video.name if str(scene.source_video) else "-"
+        self.preview_title.setText(scene.name)
+        self.preview_body.setText(
+            "\n".join(
+                [
+                    f"Name: {scene.name}",
+                    f"Video: {video_name}",
+                    f"Frames: {frames}",
+                    f"Points: {points}",
+                    f"Created: {created}",
+                    f"Pipeline: {scene.pipeline}",
+                    f"Preset: {scene.reconstruction_preset or '-'}",
+                    f"Status: {scene.status}",
+                    f"Reconstruction: {scene.reconstruction_type}",
+                    f"Tags: {tags}",
+                    "",
+                    f"Description: {description}",
+                ]
+            )
+        )
+
+    @staticmethod
+    def _format_scene_date(value: str) -> str:
+        if not value:
+            return "-"
+        try:
+            return datetime.fromisoformat(value).strftime("%d-%m-%Y")
+        except ValueError:
+            return value[:10]
 
     def view_scene(self) -> None:
         scene_record = self.scene_list_widget.selected_scene()
         if scene_record is None:
             QMessageBox.information(self, "No Scene", "Please select a scene to view.")
+            return
+        scene = Scene.from_record(scene_record)
+        if scene.status != "Ready" or scene.output_dir is None:
+            QMessageBox.information(self, "Scene Not Ready", "Run reconstruction before opening this Scene output.")
             return
 
         scene_result = SceneResult.from_record(scene_record)

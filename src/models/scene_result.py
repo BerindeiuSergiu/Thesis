@@ -27,10 +27,11 @@ class SceneResult:
 
     @classmethod
     def from_record(cls, record: dict) -> "SceneResult":
+        scene_label = str(record.get("name") or record["scene_id"])
         return cls(
-            scene_id=record["scene_id"],
+            scene_id=scene_label,
             source_video=Path(record["source_video"]),
-            output_dir=Path(record["output_dir"]),
+            output_dir=Path(record["output_dir"]) if record.get("output_dir") else Path(),
             pointcloud_path=Path(record["pointcloud_path"]) if record.get("pointcloud_path") else None,
             mesh_path=Path(record["mesh_path"]) if record.get("mesh_path") else None,
             camera_poses=list(record.get("camera_poses", [])),
