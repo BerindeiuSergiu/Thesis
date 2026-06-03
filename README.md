@@ -70,7 +70,7 @@ experiments/
 |- input_quality_lab/          # Video input diagnostics
 |- gaussian_splatting_methods/ # Gaussian export experiments
 |- mesh_reconstrction_methods/ # Mesh reconstruction experiments
-`- vast_training/              # GA-head and LoRA fine-tuning infrastructure
+`- vast_training/              # GA-head fine-tuning and evaluation infrastructure
 
 data/raw/                      # Local input videos, ignored except placeholder
 ```
@@ -108,27 +108,14 @@ A completed run can include:
 
 Generated artifacts stay local and are excluded by `.gitignore`.
 
-## Indoor Fine-Tuning And LoRA
+## Indoor Fine-Tuning
 
 The repository also contains a separate Vast.ai training workflow under `experiments/vast_training/`. The intended progression is:
 
 1. load the pretrained Fast3R model;
 2. fine-tune the global alignment head on indoor data;
-3. materialize the resulting checkpoint;
-4. apply LoRA adapters to selected transformer layers using a restricted dataset;
-5. merge trained adapters into a standalone Fast3R export for application use.
-
-The initial LoRA profile is:
-
-```text
-experiments/vast_training/configs/arkitscenes_lora_decoder_small.json
-```
-
-It targets decoder attention layers with rank `8`, alpha `16`, dropout `0.05`, and a small ARKitScenes subset. LoRA support depends on:
-
-```bash
-python -m pip install -r experiments/vast_training/requirements-lora.txt
-```
+3. evaluate the pretrained and fine-tuned checkpoints on the same validation setup;
+4. export the final checkpoint for application-side experiments.
 
 Fine-tuning infrastructure is implemented, but completed fine-tuning results are not yet presented as validated experimental findings.
 
@@ -141,6 +128,6 @@ Fine-tuning infrastructure is implemented, but completed fine-tuning results are
 
 ## Current Scope
 
-The current thesis contribution is a Fast3R-based indoor reconstruction workflow with input curation, confidence-aware cleanup, practical scale normalization, shared dual-output processing, local visualization, and preparation for indoor adaptation through GA-head fine-tuning and LoRA.
+The current thesis contribution is a Fast3R-based indoor reconstruction workflow with input curation, confidence-aware cleanup, practical scale normalization, shared dual-output processing, local visualization, and preparation for indoor adaptation through GA-head fine-tuning.
 
 Future work includes controlled runtime comparisons, geometric ground-truth evaluation, completed indoor fine-tuning experiments, improved scale recovery, mesh-quality analysis, and optional Gaussian optimization for higher-fidelity view synthesis.
