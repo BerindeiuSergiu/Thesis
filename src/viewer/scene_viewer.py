@@ -6,6 +6,7 @@ import subprocess
 import sys
 import time
 import webbrowser
+from dataclasses import dataclass
 from pathlib import Path
 
 try:
@@ -14,6 +15,12 @@ try:
     O3D_AVAILABLE = True
 except ImportError:
     O3D_AVAILABLE = False
+
+
+@dataclass(frozen=True)
+class ViewerLaunch:
+    process: subprocess.Popen[str]
+    url: str
 
 
 def _gaussian_pointcloud_from_scene(scene_result) -> Path | None:
@@ -44,13 +51,19 @@ def _find_free_port(start_port: int = 8080, end_port: int = 8999) -> int:
     raise RuntimeError(f"No free viewer port found in range {start_port}-{end_port}.")
 
 
-def launch_scene_viewer(scene_result, preferred_viewer: str = "viser", geometry_mode: str = "auto") -> subprocess.Popen[str]:
+def launch_scene_viewer(
+    scene_result,
+    preferred_viewer: str = "viser",
+    geometry_mode: str = "auto",
+    open_browser: bool = False,
+) -> ViewerLaunch:
     pointcloud = str(scene_result.pointcloud_path) if scene_result.pointcloud_path else ""
     mesh = str(scene_result.mesh_path) if scene_result.mesh_path else ""
     gaussian_pointcloud = _gaussian_pointcloud_from_scene(scene_result)
     if geometry_mode == "gaussian" and gaussian_pointcloud is not None:
         pointcloud = str(gaussian_pointcloud)
     port = _find_free_port()
+    url = f"http://127.0.0.1:{int(port)}"
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -63,11 +76,13 @@ def launch_scene_viewer(scene_result, preferred_viewer: str = "viser", geometry_
         "--port",
         str(port),
     ]
+    if not open_browser:
+        command.append("--no-browser")
     if pointcloud:
         command.extend(["--pointcloud", pointcloud])
     if mesh:
         command.extend(["--mesh", mesh])
-    return subprocess.Popen(command)
+    return ViewerLaunch(process=subprocess.Popen(command), url=url)
 
 
 def _resolve_geometry_mode(pointcloud_path: Path | None, mesh_path: Path | None, geometry_mode: str) -> tuple[bool, bool]:
@@ -104,6 +119,7 @@ def _run_viser_viewer(
     mesh_path: Path | None,
     geometry_mode: str,
     port: int,
+    open_browser: bool,
 ) -> None:
     import numpy as np
     import viser
@@ -136,7 +152,8 @@ def _run_viser_viewer(
 
     url = f"http://127.0.0.1:{int(port)}"
 
-    webbrowser.open(url)
+    if open_browser:
+        webbrowser.open(url)
     print(f"{title} viewer running at: {url}", flush=True)
     while True:
         time.sleep(1.0)
@@ -150,13 +167,23 @@ def main() -> int:
     parser.add_argument("--mesh", type=Path, default=None)
     parser.add_argument("--title", type=str, default="Scene Viewer")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--no-browser", action="store_true", help="Start the Viser server without opening a browser.")
     args = parser.parse_args()
 
     try:
         if args.preferred_viewer == "viser":
             try:
-                _run_viser_viewer(args.title, args.pointcloud, args.mesh, args.geometry_mode, args.port)
+                _run_viser_viewer(
+                    args.title,
+                    args.pointcloud,
+                    args.mesh,
+                    args.geometry_mode,
+                    args.port,
+                    open_browser=not args.no_browser,
+                )
             except Exception:
+                if args.no_browser:
+                    raise
                 _run_open3d_viewer(args.title, args.pointcloud, args.mesh, args.geometry_mode)
         else:
             _run_open3d_viewer(args.title, args.pointcloud, args.mesh, args.geometry_mode)

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="760" viewBox="0 0 1400 760">
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .panel { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 14; }
+      .primary { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; rx: 10; }
+      .secondary { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; rx: 10; }
+      .success { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; rx: 10; }
+      .warn { fill: #ffedd5; stroke: #ea580c; stroke-width: 2; rx: 10; }
+      .title { font: 700 28px Segoe UI, Arial, sans-serif; fill: #0f172a; }
+      .label { font: 700 17px Segoe UI, Arial, sans-serif; fill: #0f172a; }
+      .small { font: 500 13px Segoe UI, Arial, sans-serif; fill: #334155; }
+      .arrow { stroke: #334155; stroke-width: 2.4; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+  </defs>
+  <rect class="bg" x="0" y="0" width="1400" height="760"/>
+  <text class="title" x="48" y="52">FIGURA 5.2 - Fluxul UI scene-first al aplicatiei</text>
+  <text class="small" x="48" y="78">Diagrama pentru workflow-ul utilizatorului: scene, video, preset, reconstructie, output si viewer incorporat.</text>
+
+  <rect class="panel" x="60" y="120" width="1280" height="170"/>
+  <text class="label" x="90" y="155">Meniu Workflow</text>
+  <rect class="primary" x="90" y="180" width="220" height="70"/>
+  <text class="label" x="126" y="210">New Scene</text>
+  <text class="small" x="126" y="233">nume, video, descriere, taguri</text>
+  <rect class="primary" x="390" y="180" width="220" height="70"/>
+  <text class="label" x="426" y="210">Analyze Video</text>
+  <text class="small" x="426" y="233">preset calculat pentru clip</text>
+  <rect class="primary" x="690" y="180" width="220" height="70"/>
+  <text class="label" x="722" y="210">Run Reconstruction</text>
+  <text class="small" x="722" y="233">worker + pipeline Fast3R</text>
+  <rect class="primary" x="990" y="180" width="220" height="70"/>
+  <text class="label" x="1035" y="210">Open Output</text>
+  <text class="small" x="1035" y="233">viewer Viser in QWebEngineView</text>
+  <path class="arrow" d="M 310 215 L 390 215"/>
+  <path class="arrow" d="M 610 215 L 690 215"/>
+  <path class="arrow" d="M 910 215 L 990 215"/>
+
+  <rect class="panel" x="60" y="340" width="365" height="310"/>
+  <text class="label" x="90" y="375">Scene Library</text>
+  <rect class="secondary" x="90" y="405" width="305" height="48"/>
+  <text class="label" x="112" y="436">Living Room Apartment</text>
+  <rect class="secondary" x="90" y="465" width="305" height="48"/>
+  <text class="label" x="112" y="496">Kitchen Capture</text>
+  <rect class="secondary" x="90" y="525" width="305" height="48"/>
+  <text class="label" x="112" y="556">Office Scan</text>
+  <text class="small" x="90" y="612">Numele scenei este elementul principal; metadatele raman in tooltip si in panoul de detalii.</text>
+
+  <rect class="panel" x="485" y="340" width="365" height="310"/>
+  <text class="label" x="515" y="375">Reconstruction Properties</text>
+  <rect class="warn" x="515" y="405" width="305" height="48"/>
+  <text class="label" x="538" y="436">Input: video selectat</text>
+  <rect class="warn" x="515" y="465" width="305" height="48"/>
+  <text class="label" x="538" y="496">Weights: Default / Fine-Tuned</text>
+  <rect class="warn" x="515" y="525" width="305" height="48"/>
+  <text class="label" x="538" y="556">Preset: high_quality_detail</text>
+  <text class="small" x="515" y="612">Auto preset ascunde setarile manuale; dezactivarea lui afiseaza taburile avansate.</text>
+
+  <rect class="panel" x="910" y="340" width="365" height="310"/>
+  <text class="label" x="940" y="375">Central Workspace</text>
+  <rect class="success" x="940" y="405" width="305" height="80"/>
+  <text class="label" x="982" y="438">Embedded Viser Viewer</text>
+  <text class="small" x="982" y="462">sau stare goala inainte de output</text>
+  <rect class="success" x="940" y="515" width="305" height="58"/>
+  <text class="label" x="982" y="550">Pipeline Progress</text>
+  <text class="small" x="940" y="612">Utilizatorul inspecteaza scena fara browser extern.</text>
+
+  <path class="arrow" d="M 425 495 L 485 495"/>
+  <path class="arrow" d="M 850 495 L 910 495"/>
+</svg>

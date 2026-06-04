@@ -28,7 +28,10 @@ class ViewerServiceTests(unittest.TestCase):
         result = service.open_scene(scene_result)
 
         self.assertEqual(result, "viewer-process")
-        self.assertEqual(calls, [(scene_result, {"preferred_viewer": "open3d", "geometry_mode": "mesh"})])
+        self.assertEqual(
+            calls,
+            [(scene_result, {"preferred_viewer": "open3d", "geometry_mode": "mesh", "open_browser": False})],
+        )
 
     def test_open_scene_preserves_existing_viewer_defaults(self) -> None:
         calls = []
@@ -45,7 +48,7 @@ class ViewerServiceTests(unittest.TestCase):
 
         service.open_scene(scene_result)
 
-        self.assertEqual(calls, [{"preferred_viewer": "viser", "geometry_mode": "gaussian"}])
+        self.assertEqual(calls, [{"preferred_viewer": "viser", "geometry_mode": "gaussian", "open_browser": False}])
 
 
 if __name__ == "__main__":

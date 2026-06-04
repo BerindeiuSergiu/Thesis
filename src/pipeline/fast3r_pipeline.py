@@ -65,6 +65,57 @@ class Fast3rPipeline(BasePipeline):
         merged["active_preset"] = preset_name
         return merged
 
+    def _apply_fast3r_model_profile(self, fast3r_config: dict) -> dict:
+        """Resolve the selected model profile into concrete Fast3R model sources."""
+
+        merged = dict(fast3r_config)
+        profiles = merged.get("model_profiles", {})
+        if not isinstance(profiles, dict):
+            return merged
+        profile_key = str(merged.get("active_model_profile") or "default")
+        profile = profiles.get(profile_key)
+        if not isinstance(profile, dict):
+            self.logger.warning("Unknown Fast3R model profile '%s'; using existing model settings.", profile_key)
+            return merged
+
+        repo_root = Path(__file__).resolve().parents[2]
+        source_type = str(profile.get("source_type") or "huggingface").lower()
+        model_name = self._resolve_model_source(
+            profile.get("model_name", merged.get("model_name", "jedyang97/Fast3R_ViT_Large_512")),
+            source_type=source_type,
+            repo_root=repo_root,
+        )
+        probe_model_name = self._resolve_model_source(
+            profile.get("probe_model_name", model_name),
+            source_type=source_type,
+            repo_root=repo_root,
+        )
+        merged["active_model_profile"] = profile_key
+        merged["model_profile_label"] = str(profile.get("label") or profile_key)
+        merged["model_name"] = model_name
+        merged["probe_model_name"] = probe_model_name
+        return merged
+
+    def _resolve_model_source(self, value: object, source_type: str, repo_root: Path) -> str:
+        source = str(value or "").strip()
+        if not source:
+            return "jedyang97/Fast3R_ViT_Large_512"
+        if source_type != "local":
+            return source
+
+        path = Path(source)
+        if not path.is_absolute():
+            path = repo_root / path
+        path = path.resolve()
+        if not path.exists():
+            raise FileNotFoundError(
+                "The selected Fast3R weights profile points to a missing local model folder:\n"
+                f"{path}\n\n"
+                "Export or copy the fine-tuned GA-head checkpoint in Hugging Face format to this path, "
+                "or switch the Weights profile back to Default Fast3R."
+            )
+        return str(path)
+
     def run(self, video_path: str) -> SceneResult:
         if not self.config:
             raise RuntimeError("Pipeline config was not loaded.")
@@ -73,6 +124,7 @@ class Fast3rPipeline(BasePipeline):
         app_config = self.config.get("app", {})
         pipeline_config = self.config.get("pipeline", {})
         fast3r_config = self._apply_fast3r_preset(dict(pipeline_config.get("fast3r", {})))
+        fast3r_config = self._apply_fast3r_model_profile(fast3r_config)
 
         outputs_root = Path(app_config.get("outputs_root", "outputs"))
         if not outputs_root.is_absolute():
@@ -169,6 +221,7 @@ class Fast3rPipeline(BasePipeline):
                 save_depth_maps=bool(fast3r_config.get("save_depth_maps", True)),
                 niter_pnp=int(fast3r_config.get("niter_pnp", 100)),
                 dtype=str(fast3r_config.get("dtype", "float32")),
+                model_name=str(fast3r_config.get("model_name", "jedyang97/Fast3R_ViT_Large_512")),
             )
         )
 

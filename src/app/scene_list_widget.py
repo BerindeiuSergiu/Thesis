@@ -4,7 +4,7 @@ from datetime import datetime
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QStandardItem, QStandardItemModel
-from PyQt6.QtWidgets import QAbstractItemView, QLabel, QTreeView, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QAbstractItemView, QHeaderView, QLabel, QTreeView, QVBoxLayout, QWidget
 
 from src.models.scene import Scene
 
@@ -22,9 +22,24 @@ class SceneListWidget(QWidget):
         self.tree_view.setAlternatingRowColors(True)
         self.tree_view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.tree_view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.tree_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.tree_view.setTextElideMode(Qt.TextElideMode.ElideRight)
+        self.tree_view.setUniformRowHeights(True)
         self.scene_model = QStandardItemModel(0, 5, self)
         self.scene_model.setHorizontalHeaderLabels(["Scene", "Status", "Created", "Pipeline", "Reconstruction"])
         self.tree_view.setModel(self.scene_model)
+        header = self.tree_view.header()
+        header.setStretchLastSection(False)
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.Fixed)
+        self.tree_view.setColumnWidth(1, 70)
+        self.tree_view.setColumnWidth(2, 78)
+        self.tree_view.setColumnWidth(3, 68)
+        self.tree_view.setColumnWidth(4, 105)
+        header.setSectionsMovable(False)
         self.tree_view.selectionModel().selectionChanged.connect(lambda *_: self.selection_changed.emit())
         self.empty_label = QLabel("No processed scenes yet.")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -42,13 +57,9 @@ class SceneListWidget(QWidget):
             row = self._scene_row(scene)
             for item in row:
                 item.setData(scene, Qt.ItemDataRole.UserRole)
-                item.setToolTip(str(scene.get("output_dir", "")))
+                item.setToolTip(_scene_tooltip(scene))
                 item.setEditable(False)
             self.scene_model.appendRow(row)
-        self.tree_view.resizeColumnToContents(0)
-        self.tree_view.resizeColumnToContents(1)
-        self.tree_view.resizeColumnToContents(2)
-        self.tree_view.resizeColumnToContents(3)
         if self.scene_model.rowCount() > 0:
             self.tree_view.setCurrentIndex(self.scene_model.index(0, 0))
         self._sync_empty_state()
@@ -75,7 +86,7 @@ class SceneListWidget(QWidget):
     def _scene_row(scene: dict) -> list[QStandardItem]:
         scene_entity = Scene.from_record(scene)
         return [
-            QStandardItem(f"[Scene] {scene_entity.name}"),
+            QStandardItem(scene_entity.name),
             QStandardItem(scene_entity.status),
             QStandardItem(_format_created_at(scene_entity.created_at)),
             QStandardItem(scene_entity.pipeline),
@@ -90,3 +101,16 @@ def _format_created_at(value: str) -> str:
         return datetime.fromisoformat(value).strftime("%d-%m-%Y")
     except ValueError:
         return value[:10]
+
+
+def _scene_tooltip(scene: dict) -> str:
+    scene_entity = Scene.from_record(scene)
+    return "\n".join(
+        [
+            f"Scene: {scene_entity.name}",
+            f"Status: {scene_entity.status}",
+            f"Created: {_format_created_at(scene_entity.created_at)}",
+            f"Pipeline: {scene_entity.pipeline}",
+            f"Type: {scene_entity.reconstruction_type}",
+        ]
+    )

@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from src.models.scene_result import SceneResult
-from src.viewer.scene_viewer import launch_scene_viewer
+from src.viewer.scene_viewer import ViewerLaunch, launch_scene_viewer
 
 ViewerLauncher = Callable[..., Any]
 
@@ -16,7 +16,7 @@ class ViewerService:
         self.config = config
         self.launcher = launcher
 
-    def open_scene(self, scene_result: SceneResult) -> Any:
+    def open_scene(self, scene_result: SceneResult) -> ViewerLaunch:
         viewer_config = self.config.get("viewer", {})
         preferred_viewer = viewer_config.get("preferred", "viser")
         geometry_mode = viewer_config.get("geometry_mode", "gaussian")
@@ -24,4 +24,5 @@ class ViewerService:
             scene_result,
             preferred_viewer=preferred_viewer,
             geometry_mode=geometry_mode,
+            open_browser=False,
         )

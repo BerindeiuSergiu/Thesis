@@ -65,6 +65,18 @@ pipeline:
     probe_confidence_threshold: 1.0
     probe_pnp_iters: 50
     probe_focal_method: "first_view_from_global_head"
+    active_model_profile: "default"
+    model_profiles:
+      default:
+        label: "Default Fast3R"
+        model_name: "jedyang97/Fast3R_ViT_Large_512"
+        probe_model_name: "jedyang97/Fast3R_ViT_Large_512"
+        source_type: "huggingface"
+      thesis_ga_head:
+        label: "Fine-Tuned Fast3R"
+        model_name: "data/models/fast3r_arkitscenes_ga_head_hf"
+        probe_model_name: "data/models/fast3r_arkitscenes_ga_head_hf"
+        source_type: "local"
     probe_model_name: "jedyang97/Fast3R_ViT_Large_512"
     probe_max_parallel_views: 16
     fast3r_image_size: 512

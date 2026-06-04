@@ -18,6 +18,7 @@ class Scene:
     source_video: Path
     description: str = ""
     pipeline: str = "default"
+    model_profile: str = "default"
     reconstruction_preset: str = ""
     tags: list[str] = field(default_factory=list)
     status: str = "Draft"
@@ -36,6 +37,7 @@ class Scene:
             "source_video": str(self.source_video),
             "description": self.description,
             "pipeline": self.pipeline,
+            "model_profile": self.model_profile,
             "reconstruction_preset": self.reconstruction_preset,
             "tags": self.tags,
             "status": self.status,
@@ -62,6 +64,7 @@ class Scene:
             source_video=source_video,
             description=str(record.get("description", "")),
             pipeline=str(record.get("pipeline", "default")),
+            model_profile=str(record.get("model_profile") or metadata.get("model_profile") or "default"),
             reconstruction_preset=str(record.get("reconstruction_preset", "")),
             tags=list(record.get("tags", [])) if isinstance(record.get("tags", []), list) else [],
             status=status,
@@ -92,6 +95,7 @@ class Scene:
             source_video=result.source_video,
             description=self.description,
             pipeline=self.pipeline,
+            model_profile=self.model_profile,
             reconstruction_preset=self.reconstruction_preset,
             tags=self.tags,
             status="Ready",

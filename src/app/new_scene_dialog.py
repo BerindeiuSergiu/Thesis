@@ -26,8 +26,10 @@ class NewSceneDialog(QDialog):
         self,
         pipelines: list[str],
         presets: list[str],
+        model_profiles: list[tuple[str, str]] | None = None,
         default_pipeline: str = "default",
         default_preset: str = "",
+        default_model_profile: str = "default",
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -52,6 +54,12 @@ class NewSceneDialog(QDialog):
         preset_index = self.preset_combo.findText(default_preset)
         if preset_index >= 0:
             self.preset_combo.setCurrentIndex(preset_index)
+        self.model_profile_combo = QComboBox()
+        for key, label in model_profiles or [("default", "Default Fast3R")]:
+            self.model_profile_combo.addItem(label, key)
+        profile_index = self.model_profile_combo.findData(default_model_profile)
+        if profile_index >= 0:
+            self.model_profile_combo.setCurrentIndex(profile_index)
         self.tags_edit = QLineEdit()
         self.tags_edit.setPlaceholderText("Optional, comma separated")
 
@@ -66,6 +74,7 @@ class NewSceneDialog(QDialog):
         form.addRow("Source Video *", video_row)
         form.addRow("Description", self.description_edit)
         form.addRow("Pipeline", self.pipeline_combo)
+        form.addRow("Weights Profile", self.model_profile_combo)
         form.addRow("Reconstruction Preset", self.preset_combo)
         form.addRow("Tags", self.tags_edit)
 
@@ -86,6 +95,7 @@ class NewSceneDialog(QDialog):
             source_video=Path(self.video_edit.text()).resolve(),
             description=self.description_edit.toPlainText().strip(),
             pipeline=self.pipeline_combo.currentText(),
+            model_profile=str(self.model_profile_combo.currentData() or "default"),
             reconstruction_preset=self.preset_combo.currentText(),
             tags=tags,
             status="Draft",
