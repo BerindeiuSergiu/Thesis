@@ -41,6 +41,7 @@ Thumbs.db
 # Documentation stays local
 /thesis_docs/
 /agent/
+/helper/
 **/docs/
 *.md
 !/README.md
@@ -84,11 +85,6 @@ Thumbs.db
 !/src/outputs/.gitkeep
 
 # Generated experiment outputs
-/helper/script_for_plotting/generated/*
-!/helper/script_for_plotting/generated/.gitkeep
-/helper/script_for_plotting/figura_6_4_comparatie_val_loss_default_vs_finetuned.py
-/helper/script_for_plotting/generate_temp_doc_missing_assets.py
-/helper/script_for_plotting/tabelul_6_3_retentia_geometriei_in_rulari_locale_reusite.py
 /experiments/**/outputs/
 /experiments/**/results/
 /experiments/**/tmp_results/
@@ -123,6 +119,7 @@ Thumbs.db
 /transfer/
 
 # Fast3R checkout metadata and demo media
+/fast3r/
 /fast3r/.git/
 /fast3r/assets/
 /fast3r/demo_examples/

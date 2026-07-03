@@ -6,7 +6,7 @@ Codul sursa al aplicatiei este disponibil public la:
 
 https://github.com/BerindeiuSergiu/Thesis
 
-Repository-ul contine codul sursa al aplicatiei desktop, pipeline-ul Fast3R integrat, scripturile Python pentru experimente si workflow-ul de training/evaluare Vast.ai. Fisierele binare compilate, documentele lucrarii, seturile de date, modelele, arhivele si rezultatele generate local nu sunt incluse in repository.
+Repository-ul contine codul sursa al aplicatiei desktop, pipeline-ul de integrare Fast3R, codul Python pentru experimente si workflow-ul de training/evaluare Vast.ai. Fisierele binare compilate, codul vendorizat al modelului Fast3R, documentele lucrarii, seturile de date, modelele, arhivele si rezultatele generate local nu sunt incluse in repository.
 
 ## Pasi de compilare
 
@@ -15,7 +15,7 @@ Aplicatia este o aplicatie Python si nu necesita compilare intr-un executabil pe
 Verificare optionala a codului Python:
 
 ```bash
-python -m compileall src experiments scripts fast3r
+python -m compileall src experiments scripts
 ```
 
 ## Pasi de instalare
@@ -41,10 +41,14 @@ python -m pip install --upgrade pip
 python -m pip install -r src/requirements.txt
 ```
 
-4. Pentru inferenta Fast3R completa, instalati si dependintele modelului vendorizat:
+4. Instalati separat dependinta Fast3R folosita de pipeline. Varianta folosita in proiect este repository-ul upstream Fast3R; acesta poate fi clonat separat si instalat in acelasi mediu virtual conform instructiunilor upstream.
+
+Exemplu local, din afara repository-ului predat:
 
 ```bash
-python -m pip install -r fast3r/requirements.txt
+git clone https://github.com/jedyang97/Fast3R.git fast3r_external
+python -m pip install -r fast3r_external/requirements.txt
+python -m pip install -e fast3r_external
 ```
 
 Modelul implicit `jedyang97/Fast3R_ViT_Large_512` este configurat in `src/config/settings.yaml` si se descarca prin Hugging Face la prima utilizare, daca nu exista deja in cache-ul local.
