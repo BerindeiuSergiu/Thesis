@@ -64,6 +64,11 @@ def launch_scene_viewer(
         pointcloud = str(gaussian_pointcloud)
     port = _find_free_port()
     url = f"http://127.0.0.1:{int(port)}"
+    print(
+        f"[viewer-launch] scene={scene_result.scene_id} mode={geometry_mode} "
+        f"pointcloud={pointcloud or '-'} mesh={mesh or '-'} url={url}",
+        flush=True,
+    )
     command = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -131,9 +136,11 @@ def _run_viser_viewer(
     show_pointcloud, show_mesh = _resolve_geometry_mode(pointcloud_path, mesh_path, geometry_mode)
 
     if show_pointcloud and pointcloud_path is not None:
+        print(f"[viewer] loading pointcloud: {pointcloud_path}", flush=True)
         pcd = o3d.io.read_point_cloud(str(pointcloud_path))
         points = np.asarray(pcd.points)
         colors = np.asarray(pcd.colors) if len(pcd.colors) else None
+        print(f"[viewer] loaded pointcloud points={len(points):,}", flush=True)
         server.scene.add_point_cloud(
             name="/scene/pointcloud",
             points=points,

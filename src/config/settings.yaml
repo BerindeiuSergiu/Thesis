@@ -1,5 +1,6 @@
 app:
   name: "Fast3R Desktop Wrapper"
+  icon_path: "app/assets/app_icon_multi.ico"
   default_pipeline: "default"
   scenes_index_path: "data/scenes_index.json"
   outputs_root: "outputs"

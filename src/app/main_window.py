@@ -1114,6 +1114,11 @@ class MainWindow(QMainWindow):
 
     def view_scene(self) -> None:
         scene_record = self.scene_list_widget.selected_scene()
+        if scene_record is None and self.selected_scene_id:
+            scene_record = next(
+                (record for record in self.scene_repository.list_records() if record.get("scene_id") == self.selected_scene_id),
+                None,
+            )
         if scene_record is None:
             self.progress_label.setText("No output selected")
             self.statusBar().showMessage("No output selected")
@@ -1162,9 +1167,19 @@ class MainWindow(QMainWindow):
 
         scene_result = SceneResult.from_record(scene_record)
         try:
+            self.logger.info(
+                "Opening viewer for scene_id=%s name=%s output_dir=%s pointcloud=%s mesh=%s",
+                scene.scene_id,
+                scene.name,
+                scene.output_dir,
+                scene.pointcloud_path,
+                scene.mesh_path,
+            )
             self.progress_label.setText("Starting viewer...")
             self.statusBar().showMessage("Starting viewer...")
             self.preview_title.setText(scene.name)
+            self.embedded_viewer.show_message(f"Loading output for:\n\n{scene.name}")
+            self._stop_other_viewers(scene.scene_id)
             launch = self._viewer_launch_for_scene(scene.scene_id, scene_result)
             url = str(getattr(launch, "url", ""))
             if not url:
@@ -1188,6 +1203,15 @@ class MainWindow(QMainWindow):
         launch = self.viewer_service.open_scene(scene_result)
         self.viewer_launches[scene_id] = launch
         return launch
+
+    def _stop_other_viewers(self, scene_id: str) -> None:
+        for cached_scene_id, launch in list(self.viewer_launches.items()):
+            if cached_scene_id == scene_id:
+                continue
+            process = getattr(launch, "process", None)
+            if process is not None and process.poll() is None:
+                process.terminate()
+            self.viewer_launches.pop(cached_scene_id, None)
 
     def _scene_has_viewable_output(self, scene: Scene) -> bool:
         if scene.output_dir is None or not scene.output_dir.exists():

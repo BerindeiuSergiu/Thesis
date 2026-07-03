@@ -58,8 +58,8 @@ class EmbeddedViewerWidget(QWidget):
             self.load_failed.emit("URL unavailable")
             return False
 
-        self.empty_label.setText("Starting viewer...")
-        self.stack.setCurrentWidget(self.web_view)
+        self.empty_label.setText(f"Loading viewer...\n\n{url}")
+        self.stack.setCurrentWidget(self.empty_label)
         self._load_attempts = 1
         self.web_view.load(QUrl(url))
         return True
@@ -89,6 +89,7 @@ class EmbeddedViewerWidget(QWidget):
     def _on_load_finished(self, ok: bool) -> None:
         self._loaded = bool(ok)
         if ok:
+            self.stack.setCurrentWidget(self.web_view)
             self.load_succeeded.emit(self._current_url)
             return
         if self._current_url and self._load_attempts < self._max_load_attempts:

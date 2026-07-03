@@ -18,7 +18,7 @@ class SceneRepository:
     def list_records(self) -> list[dict]:
         self._ensure_index_exists()
         try:
-            return list(json.loads(self.index_path.read_text(encoding="utf-8")))
+            return list(json.loads(self.index_path.read_text(encoding="utf-8-sig")))
         except json.JSONDecodeError:
             self.logger.exception("Invalid scene index JSON: %s", self.index_path)
             return []

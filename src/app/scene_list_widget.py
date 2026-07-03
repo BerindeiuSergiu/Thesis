@@ -52,6 +52,11 @@ class SceneListWidget(QWidget):
         self._sync_empty_state()
 
     def set_scenes(self, scenes: list[dict]) -> None:
+        previous_scene_id = None
+        previous = self.selected_scene()
+        if isinstance(previous, dict):
+            previous_scene_id = previous.get("scene_id")
+
         self.scene_model.removeRows(0, self.scene_model.rowCount())
         for scene in scenes:
             row = self._scene_row(scene)
@@ -61,11 +66,15 @@ class SceneListWidget(QWidget):
                 item.setEditable(False)
             self.scene_model.appendRow(row)
         if self.scene_model.rowCount() > 0:
-            self.tree_view.setCurrentIndex(self.scene_model.index(0, 0))
+            if previous_scene_id:
+                self.select_scene(str(previous_scene_id))
+            if not self.tree_view.currentIndex().isValid():
+                self.tree_view.setCurrentIndex(self.scene_model.index(0, 0))
         self._sync_empty_state()
 
     def selected_scene(self) -> dict | None:
-        index = self.tree_view.currentIndex()
+        selected_rows = self.tree_view.selectionModel().selectedRows(0)
+        index = selected_rows[0] if selected_rows else self.tree_view.currentIndex()
         if not index.isValid():
             return None
         return index.siblingAtColumn(0).data(Qt.ItemDataRole.UserRole)

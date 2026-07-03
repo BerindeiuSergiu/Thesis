@@ -11,6 +11,8 @@ pip-wheel-metadata/
 
 # Virtual environments / local env files
 .venv/
+.venv_export/
+.venv_export_linux/
 venv/
 env/
 ENV/
@@ -59,6 +61,8 @@ Thumbs.db
 # Shell launchers stay local
 *.sh
 *.ksh
+*.bat
+*.ps1
 
 # Input videos and local datasets
 /data/raw/*
@@ -80,6 +84,11 @@ Thumbs.db
 !/src/outputs/.gitkeep
 
 # Generated experiment outputs
+/helper/script_for_plotting/generated/*
+!/helper/script_for_plotting/generated/.gitkeep
+/helper/script_for_plotting/figura_6_4_comparatie_val_loss_default_vs_finetuned.py
+/helper/script_for_plotting/generate_temp_doc_missing_assets.py
+/helper/script_for_plotting/tabelul_6_3_retentia_geometriei_in_rulari_locale_reusite.py
 /experiments/**/outputs/
 /experiments/**/results/
 /experiments/**/tmp_results/
@@ -88,6 +97,7 @@ Thumbs.db
 /experiments/**/visualization_output/
 /experiments/raw_inference_output/
 /experiments/gpt
+/experiments/beta_pipeline_testing/requirements.txt
 /experiments/vast_training/runs/
 /experiments/vast_training/runs.zip
 /experiments/vast_training/my_manifest.txt
@@ -110,11 +120,14 @@ Thumbs.db
 *.obj
 *.csv
 *.log
+/transfer/
 
 # Fast3R checkout metadata and demo media
 /fast3r/.git/
 /fast3r/assets/
 /fast3r/demo_examples/
+/fast3r/fast3r/croco/assets/
+/fast3r/fast3r/dust3r/datasets/aria/*.png
 
 # Standalone DUSt3R checkout and legacy experiment route
 /dust3r/
@@ -127,3 +140,6 @@ logs/
 checkpoints/
 tmp/
 temp/
+
+# Local/generated app assets
+/src/app/assets/app_icon.ico
