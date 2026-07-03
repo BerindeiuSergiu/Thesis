@@ -8,6 +8,17 @@ https://github.com/BerindeiuSergiu/Thesis
 
 Repository-ul contine codul sursa al aplicatiei desktop, pipeline-ul de integrare Fast3R, codul Python pentru experimente si workflow-ul de training/evaluare Vast.ai. Fisierele binare compilate, codul vendorizat al modelului Fast3R, documentele lucrarii, seturile de date, modelele, arhivele si rezultatele generate local nu sunt incluse in repository.
 
+## Credit Fast3R
+
+Aplicatia utilizeaza modelul si codul Fast3R ca dependinta externa:
+
+- repository oficial Fast3R: https://github.com/facebookresearch/fast3r
+- lucrare: `Fast3R: Towards 3D Reconstruction of 1000+ Images in One Forward Pass`, CVPR 2025
+- model pretrained folosit implicit: https://huggingface.co/jedyang97/Fast3R_ViT_Large_512
+- licenta Fast3R upstream: FAIR Noncommercial Research License
+
+Codul Fast3R upstream nu este vendorizat in acest repository de predare; trebuie instalat separat conform pasilor de mai jos.
+
 ## Pasi de compilare
 
 Aplicatia este o aplicatie Python si nu necesita compilare intr-un executabil pentru rularea din sursa.
@@ -46,7 +57,7 @@ python -m pip install -r src/requirements.txt
 Exemplu local, din afara repository-ului predat:
 
 ```bash
-git clone https://github.com/jedyang97/Fast3R.git fast3r_external
+git clone https://github.com/facebookresearch/fast3r.git fast3r_external
 python -m pip install -r fast3r_external/requirements.txt
 python -m pip install -e fast3r_external
 ```
