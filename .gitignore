@@ -42,6 +42,7 @@ Thumbs.db
 /thesis_docs/
 /agent/
 /helper/
+/build_mesh_from_scene.py
 **/docs/
 *.md
 !/README.md
@@ -62,6 +63,7 @@ Thumbs.db
 # Shell launchers stay local
 *.sh
 *.ksh
+!/run_app.sh
 *.bat
 *.ps1
 

@@ -38,11 +38,30 @@ git clone https://github.com/BerindeiuSergiu/Thesis.git
 cd Thesis
 ```
 
-2. Creati si activati un mediu virtual Python:
+2. Creati si activati un mediu virtual Python.
+
+Daca modulul `venv` nu este disponibil pe Linux, instalati-l rapid:
+
+```bash
+sudo apt install python3-venv
+```
+
+Creare mediu virtual:
 
 ```bash
 python -m venv .venv
+```
+
+Activare pe Windows:
+
+```bash
 .venv\Scripts\activate
+```
+
+Activare pe Linux/macOS/Git Bash:
+
+```bash
+source .venv/bin/activate
 ```
 
 3. Instalati dependintele aplicatiei:
@@ -70,6 +89,12 @@ Din radacina repository-ului:
 
 ```bash
 python -m src.main
+```
+
+Alternativ, folositi scriptul shell inclus:
+
+```bash
+./run_app.sh
 ```
 
 Aplicatia porneste interfata desktop PyQt6. Utilizatorul creeaza o scena, selecteaza un video monocular indoor, alege profilul de model si presetul de reconstructie, apoi ruleaza pipeline-ul local. Rezultatele sunt generate local in `src/outputs/`, folder ignorat de Git.
