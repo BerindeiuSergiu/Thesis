@@ -38,7 +38,26 @@ git clone https://github.com/BerindeiuSergiu/Thesis.git
 cd Thesis
 ```
 
-2. Creati si activati un mediu virtual Python.
+2. Instalati Python daca nu este deja disponibil.
+
+Versiunea recomandata este Python 3.12. Aplicatia poate rula si cu versiuni Python 3.10-3.12, in functie de compatibilitatea pachetelor PyTorch/Fast3R instalate local.
+
+Pe Windows, instalati Python din Microsoft Store, de pe https://www.python.org/downloads/ sau prin `winget`:
+
+```powershell
+winget install Python.Python.3.12
+python --version
+```
+
+Pe Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install python3 python3-pip python3-venv
+python3 --version
+```
+
+3. Creati si activati un mediu virtual Python.
 
 Daca modulul `venv` nu este disponibil pe Linux, instalati-l rapid:
 
@@ -50,6 +69,12 @@ Creare mediu virtual:
 
 ```bash
 python -m venv .venv
+```
+
+Daca pe Linux comanda `python` nu este disponibila, folositi:
+
+```bash
+python3 -m venv .venv
 ```
 
 Activare pe Windows:
@@ -64,14 +89,16 @@ Activare pe Linux/macOS/Git Bash:
 source .venv/bin/activate
 ```
 
-3. Instalati dependintele aplicatiei:
+4. Instalati dependintele aplicatiei:
 
 ```bash
 python -m pip install --upgrade pip
 python -m pip install -r src/requirements.txt
 ```
 
-4. Instalati separat dependinta Fast3R folosita de pipeline. Varianta folosita in proiect este repository-ul upstream Fast3R; acesta poate fi clonat separat si instalat in acelasi mediu virtual conform instructiunilor upstream.
+Fisierul `src/requirements.txt` este lista de dependinte pentru aplicatia desktop. Fisierul `requirements.txt` din radacina repository-ului este pastrat pentru scripturi si experimente vechi, iar `experiments/vast_training/requirements-lora.txt` este folosit doar pentru etapa optionala de LoRA/fine-tuning.
+
+5. Instalati separat dependinta Fast3R folosita de pipeline. Varianta folosita in proiect este repository-ul upstream Fast3R; acesta poate fi clonat separat si instalat in acelasi mediu virtual conform instructiunilor upstream.
 
 Exemplu local, din afara repository-ului predat:
 
