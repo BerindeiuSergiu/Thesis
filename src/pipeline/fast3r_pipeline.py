@@ -78,17 +78,17 @@ class Fast3rPipeline(BasePipeline):
             self.logger.warning("Unknown Fast3R model profile '%s'; using existing model settings.", profile_key)
             return merged
 
-        repo_root = Path(__file__).resolve().parents[2]
+        src_root = Path(__file__).resolve().parents[1]
         source_type = str(profile.get("source_type") or "huggingface").lower()
         model_name = self._resolve_model_source(
             profile.get("model_name", merged.get("model_name", "jedyang97/Fast3R_ViT_Large_512")),
             source_type=source_type,
-            repo_root=repo_root,
+            src_root=src_root,
         )
         probe_model_name = self._resolve_model_source(
             profile.get("probe_model_name", model_name),
             source_type=source_type,
-            repo_root=repo_root,
+            src_root=src_root,
         )
         merged["active_model_profile"] = profile_key
         merged["model_profile_label"] = str(profile.get("label") or profile_key)
@@ -96,7 +96,7 @@ class Fast3rPipeline(BasePipeline):
         merged["probe_model_name"] = probe_model_name
         return merged
 
-    def _resolve_model_source(self, value: object, source_type: str, repo_root: Path) -> str:
+    def _resolve_model_source(self, value: object, source_type: str, src_root: Path) -> str:
         source = str(value or "").strip()
         if not source:
             return "jedyang97/Fast3R_ViT_Large_512"
@@ -105,13 +105,13 @@ class Fast3rPipeline(BasePipeline):
 
         path = Path(source)
         if not path.is_absolute():
-            path = repo_root / path
+            path = src_root / path
         path = path.resolve()
         if not path.exists():
             raise FileNotFoundError(
                 "The selected Fast3R weights profile points to a missing local model folder:\n"
                 f"{path}\n\n"
-                "Export or copy the fine-tuned GA-head checkpoint in Hugging Face format to this path, "
+                "Export or copy the fine-tuned GA-head model in Hugging Face format to this path, "
                 "or switch the Weights profile back to Default Fast3R."
             )
         return str(path)

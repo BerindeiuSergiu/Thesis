@@ -120,7 +120,7 @@ class MainWindow(QMainWindow):
             return None
         path = Path(model_source)
         if not path.is_absolute():
-            path = Path(__file__).resolve().parents[2] / path
+            path = Path(__file__).resolve().parents[1] / path
         path = path.resolve()
         return None if path.exists() else path
 
