@@ -122,7 +122,6 @@ Dupa descarcare, copiati exportul local al modelului in folderul aplicatiei:
 src/data/models/fast3r_arkitscenes_ga_head_hf/
   config.json
   model.safetensors
-  README.md
 ```
 
 ## Pasi de lansare
