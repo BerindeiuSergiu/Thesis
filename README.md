@@ -110,7 +110,13 @@ python -m pip install -e fast3r_external
 
 Modelul implicit `jedyang97/Fast3R_ViT_Large_512` este configurat in `src/config/settings.yaml` si se descarca prin Hugging Face la prima utilizare, daca nu exista deja in cache-ul local.
 
-Pentru profilul `Fine-Tuned Fast3R`, copiati exportul local al modelului in folderul aplicatiei:
+6. Descarcati weight-urile pentru profilul `Fine-Tuned Fast3R`.
+
+Weight-urile fine-tuned sunt disponibile separat, deoarece `model.safetensors` este un fisier binar mare si nu este inclus in repository:
+
+https://drive.google.com/drive/folders/16VWDeR9xGjco4SWxDt-CnCQsWlMArN90?usp=sharing
+
+Dupa descarcare, copiati exportul local al modelului in folderul aplicatiei:
 
 ```text
 src/data/models/fast3r_arkitscenes_ga_head_hf/
@@ -118,8 +124,6 @@ src/data/models/fast3r_arkitscenes_ga_head_hf/
   model.safetensors
   README.md
 ```
-
-Aceste weight-uri nu sunt incluse in repository deoarece `model.safetensors` este un fisier binar mare.
 
 ## Pasi de lansare
 
