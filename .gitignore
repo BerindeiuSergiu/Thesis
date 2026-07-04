@@ -83,6 +83,10 @@ Thumbs.db
 # Application runtime state
 /src/data/*
 !/src/data/.gitkeep
+!/src/data/models/
+/src/data/models/**
+!/src/data/models/fast3r_arkitscenes_ga_head_hf/
+!/src/data/models/fast3r_arkitscenes_ga_head_hf/.gitkeep
 /src/outputs/*
 !/src/outputs/.gitkeep
 
