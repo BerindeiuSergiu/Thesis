@@ -46,7 +46,7 @@ pipeline:
         gaussian_max_alpha: 0.82
         gaussian_surface_aligned: false
         gaussian_max_surface_aligned_points: 8000000
-        mesh_enabled: false
+        mesh_enabled: true
     target_frames: 180
     selection_mode: "geometry_aware"
     visual_shortlist_target: 220
@@ -120,7 +120,7 @@ pipeline:
     gaussian_max_alpha: 0.82
     gaussian_surface_aligned: false
     gaussian_max_surface_aligned_points: 8000000
-    mesh_enabled: false
+    mesh_enabled: true
     mesh_method: "bpa"
     mesh_voxel_size: 0.006
     mesh_max_points: 1000000
